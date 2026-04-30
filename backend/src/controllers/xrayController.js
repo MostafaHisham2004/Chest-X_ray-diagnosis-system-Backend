@@ -1,3 +1,4 @@
+const path = require("path");
 const { XrayImage, ResultImage } = require("../models");
 const { analyzeXrayWithAI } = require("../services/aiService");
 const { sendError, sendSuccess } = require("../utils/response");
@@ -7,6 +8,7 @@ async function uploadXray(req, res, next) {
     if (!req.file) {
       return sendError(res, { statusCode: 400, message: "X-ray file is required", code: "VALIDATION_ERROR" });
     }
+
     const { patient_id } = req.body;
     const doctorId = req.user.role === "doctor" ? req.user.sub : null;
     const effectivePatientId = req.user.role === "patient" ? req.user.sub : patient_id;
@@ -19,10 +21,14 @@ async function uploadXray(req, res, next) {
       });
     }
 
+    // FIX: store relative path (filename only) instead of absolute path
+    // so the app works regardless of where it's deployed / what UPLOAD_DIR is set to.
+    const relativeImagePath = path.basename(req.file.path);
+
     const xray = await XrayImage.create({
       patient_id: effectivePatientId,
       doctor_id: doctorId,
-      image_path: req.file.path
+      image_path: relativeImagePath
     });
 
     return sendSuccess(res, {
@@ -41,6 +47,21 @@ async function analyzeXray(req, res, next) {
     const xray = await XrayImage.findByPk(req.params.id);
     if (!xray) {
       return sendError(res, { statusCode: 404, message: "X-ray not found", code: "NOT_FOUND" });
+    }
+
+    // FIX: prevent duplicate analysis — if a ResultImage already exists for this xray, return it
+    const existing = await ResultImage.findOne({ where: { xray_id: xray.id } });
+    if (existing) {
+      const existingPayload = {
+        ...existing.toJSON(),
+        original_image_url: xray.image_path
+      };
+      return sendSuccess(res, {
+        statusCode: 200,
+        message: "Analysis already exists",
+        data: { result: existingPayload },
+        legacy: { result: existingPayload }
+      });
     }
 
     const aiResult = await analyzeXrayWithAI({ imagePath: xray.image_path });

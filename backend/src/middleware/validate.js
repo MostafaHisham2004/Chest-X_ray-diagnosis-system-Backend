@@ -41,10 +41,10 @@ function validateParams(schema) {
   };
 }
 
-// Signup is patient only — no role field needed
+// FIX: added .trim() on email fields to prevent duplicate registrations with stray whitespace
 const signupSchema = Joi.object({
   name: Joi.string().min(1).required(),
-  email: Joi.string().email().required(),
+  email: Joi.string().email().trim().required(),
   password: Joi.string().min(8).required(),
   gender: Joi.string().min(1).required(),
   dob: Joi.string().min(1).required(),
@@ -52,12 +52,24 @@ const signupSchema = Joi.object({
 }).required();
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: Joi.string().email().trim().required(),
   password: Joi.string().min(1).required()
+}).required();
+
+const doctorSignupSchema = Joi.object({
+  name: Joi.string().min(1).required(),
+  email: Joi.string().email().trim().required(),
+  password: Joi.string().min(8).required(),
+  specialization: Joi.string().min(1).required(),
+  medical_certificate: Joi.string().min(1).required()
 }).required();
 
 const analyzeIdSchema = Joi.object({
   id: Joi.number().integer().positive().required()
+}).required();
+
+const verifyDoctorSchema = Joi.object({
+  action: Joi.string().valid("approve", "reject").required()
 }).required();
 
 function validateXrayUpload(req, _res, next) {
@@ -97,6 +109,8 @@ module.exports = {
   validateParams,
   validateXrayUpload,
   signupSchema,
+  doctorSignupSchema,
   loginSchema,
-  analyzeIdSchema
+  analyzeIdSchema,
+  verifyDoctorSchema
 };
