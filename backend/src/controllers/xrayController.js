@@ -1,5 +1,6 @@
 const { XrayImage, ResultImage } = require("../models");
 const { analyzeXrayWithAI } = require("../services/aiService");
+const { ROLES } = require("../constants/roles");
 const { sendError, sendSuccess } = require("../utils/response");
 
 async function uploadXray(req, res, next) {
@@ -8,8 +9,8 @@ async function uploadXray(req, res, next) {
       return sendError(res, { statusCode: 400, message: "X-ray file is required", code: "VALIDATION_ERROR" });
     }
     const { patient_id } = req.body;
-    const doctorId = req.user.role === "doctor" ? req.user.sub : null;
-    const effectivePatientId = req.user.role === "patient" ? req.user.sub : patient_id;
+    const doctorId = req.user.role === ROLES.DOCTOR ? req.user.sub : null;
+    const effectivePatientId = req.user.role === ROLES.PATIENT ? req.user.sub : patient_id;
 
     if (!effectivePatientId) {
       return sendError(res, {

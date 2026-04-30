@@ -1,6 +1,7 @@
 const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
+const { requireRole } = require("../middleware/roleMiddleware");
+const { ROLES } = require("../constants/roles");
 const upload = require("../middleware/uploadMiddleware");
 const { validateParams, validateXrayUpload, analyzeIdSchema } = require("../middleware/validate");
 const { uploadXray, analyzeXray } = require("../controllers/xrayController");
@@ -11,7 +12,7 @@ router.post("/upload", authMiddleware, upload.single("xray"), validateXrayUpload
 router.post(
   "/analyze/:id",
   authMiddleware,
-  roleMiddleware(["doctor"]),
+  requireRole(ROLES.DOCTOR),
   validateParams(analyzeIdSchema),
   analyzeXray
 );
