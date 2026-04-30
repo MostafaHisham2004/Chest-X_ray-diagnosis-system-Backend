@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { ROLES } = require("../constants/roles");
 
 function validateBody(schema) {
   return (req, _res, next) => {
@@ -71,7 +72,7 @@ function validateXrayUpload(req, _res, next) {
   const role = req.user?.role;
   const patientIdSchema = Joi.number().integer().positive();
   const schema = Joi.object({
-    patient_id: role === "doctor" ? patientIdSchema.required() : patientIdSchema.optional()
+    patient_id: role === ROLES.DOCTOR ? patientIdSchema.required() : patientIdSchema.optional()
   }).required();
 
   const { error, value } = schema.validate(req.body, {
