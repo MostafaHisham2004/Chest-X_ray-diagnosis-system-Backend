@@ -1,10 +1,12 @@
 const jwt = require("jsonwebtoken");
+
 const {
   authenticateUser,
   registerPatient,
   registerDoctor
 } = require("../services/authService");
 const { ROLES, ASSIGNABLE_SELF_REGISTRATION_ROLE } = require("../constants/roles");
+
 const { sendError, sendSuccess } = require("../utils/response");
 
 function signToken(user) {
@@ -22,6 +24,7 @@ async function signup(req, res, next) {
   try {
     const created = await registerPatient(req.body);
     const token = signToken(created);
+
     const user = { id: created.id, email: created.email, name: created.name };
     return sendSuccess(res, {
       statusCode: 201,
@@ -74,6 +77,7 @@ async function login(req, res, next) {
     }
 
     const token = signToken(user);
+
     const payload = { id: user.id, email: user.email, name: user.name };
     const extra =
       user.role === ROLES.DOCTOR
@@ -88,6 +92,7 @@ async function login(req, res, next) {
       message: "Login successful",
       data: { token, role: user.role, user: payload, ...extra },
       legacy: { token, role: user.role, user: payload, ...extra }
+
     });
   } catch (error) {
     return next(error);

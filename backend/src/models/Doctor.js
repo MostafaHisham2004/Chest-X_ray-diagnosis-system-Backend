@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const { VERIFICATION_STATUS } = require("../constants/roles");
 
+
 module.exports = (sequelize) =>
   sequelize.define(
     "Doctor",

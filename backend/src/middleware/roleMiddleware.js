@@ -56,3 +56,4 @@ async function requireVerifiedDoctor(req, res, next) {
 }
 
 module.exports = { requireRole, requireVerifiedDoctor };
+

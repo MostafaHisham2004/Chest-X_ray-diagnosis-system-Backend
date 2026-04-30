@@ -1,6 +1,7 @@
 const path = require("path");
 const { XrayImage, ResultImage } = require("../models");
 const { analyzeXrayWithAI } = require("../services/aiService");
+const { ROLES } = require("../constants/roles");
 const { sendError, sendSuccess } = require("../utils/response");
 
 async function uploadXray(req, res, next) {
@@ -10,8 +11,8 @@ async function uploadXray(req, res, next) {
     }
 
     const { patient_id } = req.body;
-    const doctorId = req.user.role === "doctor" ? req.user.sub : null;
-    const effectivePatientId = req.user.role === "patient" ? req.user.sub : patient_id;
+    const doctorId = req.user.role === ROLES.DOCTOR ? req.user.sub : null;
+    const effectivePatientId = req.user.role === ROLES.PATIENT ? req.user.sub : patient_id;
 
     if (!effectivePatientId) {
       return sendError(res, {
