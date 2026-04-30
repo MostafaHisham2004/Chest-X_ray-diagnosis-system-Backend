@@ -1,12 +1,24 @@
 const ROLES = Object.freeze({
-  PATIENT: "patient",
+
+  ADMIN: "admin",
   DOCTOR: "doctor",
-  ADMIN: "admin"
+  PATIENT: "patient"
+});
+
+const ALL_ROLES = Object.values(ROLES);
+
+const VERIFICATION_STATUS = Object.freeze({
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected"
+
 });
 
 const ASSIGNABLE_SELF_REGISTRATION_ROLE = ROLES.PATIENT;
 
 module.exports = {
   ROLES,
-  ASSIGNABLE_SELF_REGISTRATION_ROLE
+
+  ALL_ROLES,
+  VERIFICATION_STATUS,
 };
