@@ -1,5 +1,4 @@
 const Joi = require("joi");
-const { ROLES } = require("../constants/roles");
 
 function validateBody(schema) {
   return (req, _res, next) => {
@@ -42,10 +41,10 @@ function validateParams(schema) {
   };
 }
 
-// FIX: added .trim() on email fields to prevent duplicate registrations with stray whitespace
+// Signup is patient only — no role field needed
 const signupSchema = Joi.object({
   name: Joi.string().min(1).required(),
-  email: Joi.string().email().trim().required(),
+  email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
   gender: Joi.string().min(1).required(),
   dob: Joi.string().min(1).required(),
@@ -53,24 +52,12 @@ const signupSchema = Joi.object({
 }).required();
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().trim().required(),
+  email: Joi.string().email().required(),
   password: Joi.string().min(1).required()
-}).required();
-
-const doctorSignupSchema = Joi.object({
-  name: Joi.string().min(1).required(),
-  email: Joi.string().email().trim().required(),
-  password: Joi.string().min(8).required(),
-  specialization: Joi.string().min(1).required(),
-  medical_certificate: Joi.string().min(1).required()
 }).required();
 
 const analyzeIdSchema = Joi.object({
   id: Joi.number().integer().positive().required()
-}).required();
-
-const verifyDoctorSchema = Joi.object({
-  action: Joi.string().valid("approve", "reject").required()
 }).required();
 
 function validateXrayUpload(req, _res, next) {
@@ -84,7 +71,7 @@ function validateXrayUpload(req, _res, next) {
   const role = req.user?.role;
   const patientIdSchema = Joi.number().integer().positive();
   const schema = Joi.object({
-    patient_id: role === ROLES.DOCTOR ? patientIdSchema.required() : patientIdSchema.optional()
+    patient_id: role === "doctor" ? patientIdSchema.required() : patientIdSchema.optional()
   }).required();
 
   const { error, value } = schema.validate(req.body, {
@@ -110,8 +97,6 @@ module.exports = {
   validateParams,
   validateXrayUpload,
   signupSchema,
-  doctorSignupSchema,
   loginSchema,
-  analyzeIdSchema,
-  verifyDoctorSchema
+  analyzeIdSchema
 };

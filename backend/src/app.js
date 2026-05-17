@@ -3,11 +3,9 @@ const cors = require("cors");
 const helmet = require("helmet");
 const path = require("path");
 
-// FIX: paths corrected to match actual folder structure (routes/ middleware/)
 const authRoutes = require("./routes/authRoutes");
 const xrayRoutes = require("./routes/xrayRoutes");
 const historyRoutes = require("./routes/historyRoutes");
-const adminRoutes = require("./routes/adminRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -22,10 +20,7 @@ app.use(
 );
 app.use(helmet());
 app.use(express.json({ limit: "2mb" }));
-app.use(
-  "/uploads",
-  express.static(path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads"))
-);
+app.use("/uploads", express.static(path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads")));
 
 app.get("/", (_req, res) =>
   res.status(200).json({
@@ -37,7 +32,6 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/auth", authRoutes);
 app.use("/api/xray", xrayRoutes);
 app.use("/api/history", historyRoutes);
-app.use("/api/admin", adminRoutes);
 app.use(errorMiddleware);
 
 module.exports = app;

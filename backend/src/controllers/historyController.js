@@ -4,12 +4,14 @@ const { sendError, sendSuccess } = require("../utils/response");
 async function getPatientHistory(req, res, next) {
   try {
     const patientId = Number(req.params.id);
+    const requesterRole = req.user?.role;
+    const requesterId = Number(req.user?.sub);
 
-    // FIX: patients can only view their own history; doctors can view any patient's history
-    if (req.user.role === "patient" && req.user.sub !== patientId) {
+    // Patients can only read their own history; doctors can read any patient.
+    if (requesterRole === "patient" && requesterId !== patientId) {
       return sendError(res, {
         statusCode: 403,
-        message: "Access denied: you can only view your own history",
+        message: "You can only access your own history",
         code: "FORBIDDEN"
       });
     }
@@ -19,7 +21,6 @@ async function getPatientHistory(req, res, next) {
       include: [{ model: ResultImage }],
       order: [["upload_date", "DESC"]]
     });
-
     return sendSuccess(res, {
       statusCode: 200,
       message: "Patient history retrieved",
@@ -39,7 +40,6 @@ async function getDoctorHistory(req, res, next) {
       include: [Patient, Doctor, ResultImage],
       order: [["created_at", "DESC"]]
     });
-
     return sendSuccess(res, {
       statusCode: 200,
       message: "Doctor history retrieved",

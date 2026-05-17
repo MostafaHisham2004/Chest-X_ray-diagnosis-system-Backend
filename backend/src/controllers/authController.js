@@ -1,64 +1,44 @@
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
-const {
-  authenticateUser,
-  registerPatient,
-  registerDoctor
-} = require("../services/authService");
-const { ROLES, ASSIGNABLE_SELF_REGISTRATION_ROLE } = require("../constants/roles");
-
+const { Doctor, Patient } = require("../models");
 const { sendError, sendSuccess } = require("../utils/response");
+const { formatUser } = require("../utils/userPayload");
 
-function signToken(user) {
-  // JWT payload mirrors your existing convention: sub + role
-  // profile_id added so downstream controllers don't need extra DB hits
-  return jwt.sign(
-    { sub: user.id, role: user.role, profile_id: user.profile_id || null },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
-  );
+function signToken(userId, role, isAdmin) {
+  return jwt.sign({ sub: userId, role, isAdmin: Boolean(isAdmin) }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+  });
 }
 
-// PATIENT signup — role IGNORED from body, forced to 'patient'
+async function findUserByRole(role, id) {
+  const Model = role === "doctor" ? Doctor : Patient;
+  return Model.findByPk(id, {
+    attributes: ["id", "name", "email", "is_admin"]
+  });
+}
+
+// Signup is patient only — no role needed from request
 async function signup(req, res, next) {
   try {
-    const created = await registerPatient(req.body);
-    const token = signToken(created);
+    const { password, ...payload } = req.body;
+    const role = "patient";
 
-    const user = { id: created.id, email: created.email, name: created.name };
+    const hashed = await bcrypt.hash(password, 12);
+    const baseData = { ...payload, password: hashed };
+
+    const existing = await Patient.findOne({ where: { email: payload.email } });
+    if (existing) {
+      return sendError(res, { statusCode: 409, message: "Email already in use", code: "CONFLICT" });
+    }
+
+    const created = await Patient.create(baseData);
+    const token = signToken(created.id, role, created.is_admin);
+    const user = formatUser(created, role);
     return sendSuccess(res, {
       statusCode: 201,
       message: "Signup successful",
-      data: { token, role: ASSIGNABLE_SELF_REGISTRATION_ROLE, user },
-      legacy: { token, role: ASSIGNABLE_SELF_REGISTRATION_ROLE, user }
-    });
-  } catch (error) {
-    return next(error);
-  }
-}
-
-// DOCTOR signup — separate endpoint; role forced to 'doctor', awaits verification
-async function signupDoctor(req, res, next) {
-  try {
-    const created = await registerDoctor(req.body);
-    const token = signToken(created);
-    const user = { id: created.id, email: created.email, name: created.name };
-    return sendSuccess(res, {
-      statusCode: 201,
-      message: "Doctor registered. Awaiting admin verification.",
-      data: {
-        token,
-        role: ROLES.DOCTOR,
-        user,
-        verification_status: created.verification_status,
-        is_verified: created.is_verified
-      },
-      legacy: {
-        token,
-        role: ROLES.DOCTOR,
-        user,
-        verification_status: created.verification_status
-      }
+      data: { token, role, user },
+      legacy: { token, role, user }
     });
   } catch (error) {
     return next(error);
@@ -67,36 +47,56 @@ async function signupDoctor(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const user = await authenticateUser(req.body);
+    const { email, password } = req.body;
+
+    // Try Doctor first, then Patient — auto-detect role
+    let user = await Doctor.findOne({ where: { email } });
+    let role = "doctor";
+
     if (!user) {
-      return sendError(res, {
-        statusCode: 401,
-        message: "Invalid credentials",
-        code: "UNAUTHORIZED"
-      });
+      user = await Patient.findOne({ where: { email } });
+      role = "patient";
     }
 
-    const token = signToken(user);
+    if (!user) {
+      return sendError(res, { statusCode: 401, message: "Invalid credentials", code: "UNAUTHORIZED" });
+    }
 
-    const payload = { id: user.id, email: user.email, name: user.name };
-    const extra =
-      user.role === ROLES.DOCTOR
-        ? {
-            verification_status: user.verification_status,
-            is_verified: user.is_verified
-          }
-        : {};
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return sendError(res, { statusCode: 401, message: "Invalid credentials", code: "UNAUTHORIZED" });
+    }
 
+    const token = signToken(user.id, role, user.is_admin);
+    const payload = formatUser(user, role);
     return sendSuccess(res, {
       statusCode: 200,
       message: "Login successful",
-      data: { token, role: user.role, user: payload, ...extra },
-      legacy: { token, role: user.role, user: payload, ...extra }
-
+      data: { token, role, user: payload },
+      legacy: { token, role, user: payload }
     });
   } catch (error) {
     return next(error);
   }
 }
 
-module.exports = { signup, signupDoctor, login };
+async function getMe(req, res, next) {
+  try {
+    const { sub: userId, role } = req.user;
+    const user = await findUserByRole(role, userId);
+
+    if (!user) {
+      return sendError(res, { statusCode: 404, message: "User not found", code: "NOT_FOUND" });
+    }
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Profile loaded",
+      data: { user: formatUser(user, role), role }
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { signup, login, getMe };
