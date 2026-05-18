@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const app = require("./app");
 const { sequelize } = require("./models");
-const { ensureAdminColumns } = require("./config/migrateAdminColumn");
+const { ensureAuthSchema } = require("./config/migrateAdminColumn");
 
 const port = Number(process.env.PORT || 5000);
 const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads");
@@ -14,8 +14,8 @@ async function start() {
     await sequelize.authenticate();
     // eslint-disable-next-line no-console
     console.log("[DB] Connection established successfully.");
-    await ensureAdminColumns(sequelize);
     await sequelize.sync();
+    await ensureAuthSchema(sequelize);
     app.listen(port, "0.0.0.0", () => {
       // eslint-disable-next-line no-console
       console.log(`Backend running on http://0.0.0.0:${port} (LAN devices: use your laptop IP)`);

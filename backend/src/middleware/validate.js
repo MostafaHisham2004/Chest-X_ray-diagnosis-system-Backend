@@ -60,6 +60,10 @@ const analyzeIdSchema = Joi.object({
   id: Joi.number().integer().positive().required()
 }).required();
 
+const verifyDoctorSchema = Joi.object({
+  action: Joi.string().valid("approve", "reject").required()
+}).required();
+
 function validateXrayUpload(req, _res, next) {
   if (!req.file) {
     const err = new Error("X-ray file is required");
@@ -98,5 +102,6 @@ module.exports = {
   validateXrayUpload,
   signupSchema,
   loginSchema,
-  analyzeIdSchema
+  analyzeIdSchema,
+  verifyDoctorSchema
 };

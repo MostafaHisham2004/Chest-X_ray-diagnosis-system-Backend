@@ -5,10 +5,10 @@ async function getPatientHistory(req, res, next) {
   try {
     const patientId = Number(req.params.id);
     const requesterRole = req.user?.role;
-    const requesterId = Number(req.user?.sub);
+    const requesterPatientId = Number(req.user?.profileId);
 
     // Patients can only read their own history; doctors can read any patient.
-    if (requesterRole === "patient" && requesterId !== patientId) {
+    if (requesterRole === "patient" && requesterPatientId !== patientId) {
       return sendError(res, {
         statusCode: 403,
         message: "You can only access your own history",
@@ -34,7 +34,7 @@ async function getPatientHistory(req, res, next) {
 
 async function getDoctorHistory(req, res, next) {
   try {
-    const doctorId = req.user.sub;
+    const doctorId = req.user.profileId;
     const reports = await DiagnosisReport.findAll({
       where: { doctor_id: doctorId },
       include: [Patient, Doctor, ResultImage],

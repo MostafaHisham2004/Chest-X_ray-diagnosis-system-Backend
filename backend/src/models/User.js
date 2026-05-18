@@ -17,9 +17,10 @@ module.exports = (sequelize) =>
       },
       password: { type: DataTypes.STRING, allowNull: false },
       role: {
-        type: DataTypes.ENUM(...ALL_ROLES),
+        type: DataTypes.STRING,
         allowNull: false,
-        defaultValue: ROLES.PATIENT
+        defaultValue: ROLES.PATIENT,
+        validate: { isIn: [ALL_ROLES] }
       },
       created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
       updated_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW }

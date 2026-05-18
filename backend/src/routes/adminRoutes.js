@@ -1,6 +1,6 @@
 const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
-const { requireRole } = require("../middleware/roleMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 const { ROLES } = require("../constants/roles");
 const {
   validateBody,
@@ -12,7 +12,7 @@ const { listPendingDoctors, verifyDoctor } = require("../controllers/adminContro
 
 const router = express.Router();
 
-router.use(authMiddleware, requireRole(ROLES.ADMIN));
+router.use(authMiddleware, roleMiddleware([ROLES.ADMIN]));
 
 router.get("/doctors/pending", listPendingDoctors);
 router.patch(

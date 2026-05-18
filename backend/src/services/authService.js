@@ -4,6 +4,21 @@ const { ROLES, VERIFICATION_STATUS } = require("../constants/roles");
 
 const BCRYPT_ROUNDS = 12;
 
+function toAuthUser(user, profile = null) {
+  const isDoctor = user.role === ROLES.DOCTOR;
+
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    name: profile?.name || (user.role === ROLES.ADMIN ? "Admin" : ""),
+    profile_id: profile?.id || null,
+    isAdmin: user.role === ROLES.ADMIN,
+    verification_status: isDoctor ? profile?.verification_status || null : null,
+    is_verified: isDoctor ? Boolean(profile?.is_verified) : null
+  };
+}
+
 async function registerPatient({ email, password, name, gender, dob, medical_history }) {
   return sequelize.transaction(async (t) => {
     const normalizedEmail = String(email).toLowerCase().trim();
@@ -25,13 +40,7 @@ async function registerPatient({ email, password, name, gender, dob, medical_his
       { transaction: t }
     );
 
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: patient.name,
-      profile_id: patient.id
-    };
+    return toAuthUser(user, patient);
   });
 }
 
@@ -69,15 +78,7 @@ async function registerDoctor({
       { transaction: t }
     );
 
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: doctor.name,
-      profile_id: doctor.id,
-      verification_status: doctor.verification_status,
-      is_verified: doctor.is_verified
-    };
+    return toAuthUser(user, doctor);
   });
 }
 
@@ -90,36 +91,34 @@ async function authenticateUser({ email, password }) {
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return null;
 
-  let name = null;
-  let profile_id = null;
-  let verification_status = null;
-  let is_verified = null;
-
   if (user.role === ROLES.PATIENT) {
-    const p = await Patient.findOne({ where: { user_id: user.id } });
-    if (p) {
-      name = p.name;
-      profile_id = p.id;
-    }
-  } else if (user.role === ROLES.DOCTOR) {
-    const d = await Doctor.findOne({ where: { user_id: user.id } });
-    if (d) {
-      name = d.name;
-      profile_id = d.id;
-      verification_status = d.verification_status;
-      is_verified = d.is_verified;
-    }
+    const patient = await Patient.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, patient);
   }
 
-  return {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    name,
-    profile_id,
-    verification_status,
-    is_verified
-  };
+  if (user.role === ROLES.DOCTOR) {
+    const doctor = await Doctor.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, doctor);
+  }
+
+  return toAuthUser(user);
 }
 
-module.exports = { registerPatient, registerDoctor, authenticateUser };
+async function getCurrentUser(userId) {
+  const user = await User.findByPk(userId);
+  if (!user) return null;
+
+  if (user.role === ROLES.PATIENT) {
+    const patient = await Patient.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, patient);
+  }
+
+  if (user.role === ROLES.DOCTOR) {
+    const doctor = await Doctor.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, doctor);
+  }
+
+  return toAuthUser(user);
+}
+
+module.exports = { registerPatient, registerDoctor, authenticateUser, getCurrentUser };

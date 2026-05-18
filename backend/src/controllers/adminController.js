@@ -40,7 +40,7 @@ async function verifyDoctor(req, res, next) {
       doctor.verification_status = VERIFICATION_STATUS.REJECTED;
     }
     doctor.verified_at = new Date();
-    doctor.verified_by = req.user.id;
+    doctor.verified_by = req.user.sub;
 
     await doctor.save({ transaction: t });
     await t.commit();
