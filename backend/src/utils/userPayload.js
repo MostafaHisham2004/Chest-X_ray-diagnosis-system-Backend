@@ -3,7 +3,7 @@ function formatUser(user, role) {
     id: user.id,
     email: user.email,
     name: user.name,
-    isAdmin: Boolean(user.is_admin),
+    isAdmin: role === "admin" || Boolean(user.is_admin),
     role
   };
 }

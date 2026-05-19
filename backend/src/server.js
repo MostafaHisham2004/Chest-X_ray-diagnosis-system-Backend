@@ -4,6 +4,7 @@ const path = require("path");
 const app = require("./app");
 const { sequelize } = require("./models");
 const { ensureAuthSchema } = require("./config/migrateAdminColumn");
+const { ensureAdminExists } = require("./utils/booststrapAdmin");
 
 const port = Number(process.env.PORT || 5000);
 const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads");
@@ -16,6 +17,9 @@ async function start() {
     console.log("[DB] Connection established successfully.");
     await sequelize.sync();
     await ensureAuthSchema(sequelize);
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+      await ensureAdminExists();
+    }
     app.listen(port, "0.0.0.0", () => {
       // eslint-disable-next-line no-console
       console.log(`Backend running on http://0.0.0.0:${port} (LAN devices: use your laptop IP)`);

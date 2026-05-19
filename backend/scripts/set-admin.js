@@ -3,7 +3,9 @@
  * Usage: node scripts/set-admin.js doctor@example.com
  */
 require("dotenv").config();
-const { sequelize, Doctor, Patient } = require("../src/models");
+const { sequelize, User } = require("../src/models");
+const { ensureAuthSchema } = require("../src/config/migrateAdminColumn");
+const { ROLES } = require("../src/constants/roles");
 
 async function main() {
   const email = process.argv[2];
@@ -13,24 +15,16 @@ async function main() {
   }
 
   await sequelize.authenticate();
-  const { ensureAdminColumns } = require("../src/config/migrateAdminColumn");
-  await ensureAdminColumns(sequelize);
+  await ensureAuthSchema(sequelize);
 
-  let user = await Doctor.findOne({ where: { email } });
-  let table = "Doctors";
-
-  if (!user) {
-    user = await Patient.findOne({ where: { email } });
-    table = "Patients";
-  }
-
+  const user = await User.findOne({ where: { email: String(email).toLowerCase().trim() } });
   if (!user) {
     console.error(`No user found with email: ${email}`);
     process.exit(1);
   }
 
-  await user.update({ is_admin: true });
-  console.log(`[OK] ${email} is now an admin (${table}).`);
+  await user.update({ role: ROLES.ADMIN, updated_at: new Date() });
+  console.log(`[OK] ${email} is now an admin.`);
   process.exit(0);
 }
 

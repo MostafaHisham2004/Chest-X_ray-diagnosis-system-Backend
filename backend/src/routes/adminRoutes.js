@@ -6,14 +6,34 @@ const {
   validateBody,
   validateParams,
   verifyDoctorSchema,
-  analyzeIdSchema
+  analyzeIdSchema,
+  adminCreateUserSchema,
+  adminUpdateUserSchema
 } = require("../middleware/validate");
-const { listPendingDoctors, verifyDoctor } = require("../controllers/adminController");
+const {
+  listUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  getActivity,
+  listPendingDoctors,
+  verifyDoctor
+} = require("../controllers/adminController");
 
 const router = express.Router();
 
 router.use(authMiddleware, roleMiddleware([ROLES.ADMIN]));
 
+router.get("/users", listUsers);
+router.post("/users", validateBody(adminCreateUserSchema), createUser);
+router.patch(
+  "/users/:id",
+  validateParams(analyzeIdSchema),
+  validateBody(adminUpdateUserSchema),
+  updateUser
+);
+router.delete("/users/:id", validateParams(analyzeIdSchema), deleteUser);
+router.get("/activity", getActivity);
 router.get("/doctors/pending", listPendingDoctors);
 router.patch(
   "/doctors/:id/verify",

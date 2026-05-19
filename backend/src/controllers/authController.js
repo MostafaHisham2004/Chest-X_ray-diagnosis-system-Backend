@@ -8,6 +8,7 @@ function signToken(user) {
       sub: user.id,
       role: user.role,
       profileId: user.profile_id,
+      profile_id: user.profile_id,
       isAdmin: Boolean(user.isAdmin)
     },
     process.env.JWT_SECRET,
