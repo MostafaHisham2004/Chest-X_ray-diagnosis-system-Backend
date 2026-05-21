@@ -136,6 +136,7 @@ async function updateUser(req, res, next) {
     const updates = {};
     if (req.body.email) updates.email = req.body.email;
     if (req.body.password) updates.password = await bcrypt.hash(req.body.password, 12);
+    if (req.body.role) updates.role = req.body.role;
     if (Object.keys(updates).length) {
       updates.updated_at = new Date();
       await user.update(updates, { transaction: t });
@@ -154,7 +155,7 @@ async function updateUser(req, res, next) {
       }
     }
 
-    if (user.role === ROLES.DOCTOR && user.doctorProfile) {
+    if (currentRole === ROLES.DOCTOR && user.doctorProfile) {
       const doctorFields = ["name", "specialization", "medical_certificate"];
       const doctorUpdates = {};
       for (const field of doctorFields) {

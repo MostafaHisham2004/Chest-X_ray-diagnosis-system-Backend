@@ -6,6 +6,7 @@ const BCRYPT_ROUNDS = 12;
 
 function toAuthUser(user, profile = null) {
   const isDoctor = user.role === ROLES.DOCTOR;
+  const isPatient = user.role === ROLES.PATIENT;
 
   return {
     id: user.id,
@@ -14,8 +15,13 @@ function toAuthUser(user, profile = null) {
     name: profile?.name || (user.role === ROLES.ADMIN ? "Admin" : ""),
     profile_id: profile?.id || null,
     isAdmin: user.role === ROLES.ADMIN,
+    gender: isPatient && profile ? (profile.gender || null) : null,
+    dob: isPatient && profile ? (profile.dob || null) : null,
+    medical_history: isPatient && profile ? (profile.medical_history || null) : null,
     verification_status: isDoctor ? profile?.verification_status || null : null,
-    is_verified: isDoctor ? Boolean(profile?.is_verified) : null
+    is_verified: isDoctor ? Boolean(profile?.is_verified) : null,
+    specialization: isDoctor ? (profile?.specialization || null) : null,
+    medical_certificate: isDoctor ? (profile?.medical_certificate || null) : null
   };
 }
 
@@ -121,4 +127,53 @@ async function getCurrentUser(userId) {
   return toAuthUser(user);
 }
 
-module.exports = { registerPatient, registerDoctor, authenticateUser, getCurrentUser };
+async function updateCurrentUser(userId, updates) {
+  const user = await User.findByPk(userId);
+  if (!user) return null;
+
+  const userUpdates = {};
+  if (updates.email) userUpdates.email = updates.email;
+  if (updates.password) userUpdates.password = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
+  if (Object.keys(userUpdates).length) {
+    userUpdates.updated_at = new Date();
+    await user.update(userUpdates);
+  }
+
+  if (user.role === ROLES.PATIENT) {
+    const patient = await Patient.findOne({ where: { user_id: user.id } });
+    if (patient) {
+      const patientFields = ["name", "gender", "dob", "medical_history"];
+      const patientUpdates = {};
+      for (const field of patientFields) {
+        if (Object.prototype.hasOwnProperty.call(updates, field)) {
+          patientUpdates[field] = updates[field];
+        }
+      }
+      if (Object.keys(patientUpdates).length) {
+        await patient.update(patientUpdates);
+      }
+    }
+    return getCurrentUser(userId);
+  }
+
+  if (user.role === ROLES.DOCTOR) {
+    const doctor = await Doctor.findOne({ where: { user_id: user.id } });
+    if (doctor) {
+      const doctorFields = ["name", "specialization", "medical_certificate"];
+      const doctorUpdates = {};
+      for (const field of doctorFields) {
+        if (Object.prototype.hasOwnProperty.call(updates, field)) {
+          doctorUpdates[field] = updates[field];
+        }
+      }
+      if (Object.keys(doctorUpdates).length) {
+        await doctor.update(doctorUpdates);
+      }
+    }
+    return getCurrentUser(userId);
+  }
+
+  return getCurrentUser(userId);
+}
+
+module.exports = { registerPatient, registerDoctor, authenticateUser, getCurrentUser, updateCurrentUser };

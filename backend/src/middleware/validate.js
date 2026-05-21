@@ -48,6 +48,8 @@ const signupSchema = Joi.object({
   password: Joi.string().min(8).required(),
   gender: Joi.string().min(1).required(),
   dob: Joi.string().min(1).required(),
+  role: Joi.string().valid("patient", "doctor").optional(),
+  specialization: Joi.string().optional(),
   medical_history: Joi.string().allow(null, "").optional()
 }).required();
 
@@ -109,6 +111,7 @@ const adminUpdateUserSchema = Joi.object({
   name: Joi.string().min(1).optional(),
   email: Joi.string().email().optional(),
   password: Joi.string().min(8).optional(),
+  role: Joi.string().valid("admin", "doctor", "patient").optional(),
   gender: Joi.string().min(1).optional(),
   dob: Joi.string().min(1).optional(),
   medical_history: Joi.string().allow(null, "").optional(),

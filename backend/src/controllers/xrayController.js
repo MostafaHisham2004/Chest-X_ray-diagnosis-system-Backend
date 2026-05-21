@@ -8,13 +8,13 @@ async function uploadXray(req, res, next) {
       return sendError(res, { statusCode: 400, message: "X-ray file is required", code: "VALIDATION_ERROR" });
     }
     const { patient_id } = req.body;
-    const doctorId = req.user.role === "doctor" ? req.user.profileId : null;
-    const effectivePatientId = req.user.role === "patient" ? req.user.profileId : patient_id;
+    const doctorId = req.user.role === ROLES.DOCTOR ? req.user.profileId : null;
+    const effectivePatientId = req.user.role === ROLES.PATIENT ? req.user.profileId : patient_id;
 
     if (!effectivePatientId) {
       return sendError(res, {
         statusCode: 400,
-        message: req.user.role === "doctor" ? "patient_id is required for doctor uploads" : "Patient profile is missing",
+        message: "patient_id is required for doctor uploads",
         code: "VALIDATION_ERROR"
       });
     }
