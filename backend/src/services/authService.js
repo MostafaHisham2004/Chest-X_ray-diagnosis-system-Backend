@@ -1,8 +1,12 @@
 const bcrypt = require("bcrypt");
-const { sequelize, User, Patient, Doctor } = require("../models");
+const { sequelize, User, Patient, Doctor, PatientDoctorConnection } = require("../models");
 const { ROLES, VERIFICATION_STATUS } = require("../constants/roles");
 
 const BCRYPT_ROUNDS = 12;
+
+function normalizePhone(value) {
+  return String(value || "").replace(/[^\d+]/g, "").trim();
+}
 
 function toAuthUser(user, profile = null) {
   const isDoctor = user.role === ROLES.DOCTOR;
@@ -15,6 +19,7 @@ function toAuthUser(user, profile = null) {
     name: profile?.name || (user.role === ROLES.ADMIN ? "Admin" : ""),
     profile_id: profile?.id || null,
     isAdmin: user.role === ROLES.ADMIN,
+    phone: isPatient && profile ? (profile.phone || null) : null,
     gender: isPatient && profile ? (profile.gender || null) : null,
     dob: isPatient && profile ? (profile.dob || null) : null,
     medical_history: isPatient && profile ? (profile.medical_history || null) : null,
@@ -25,7 +30,7 @@ function toAuthUser(user, profile = null) {
   };
 }
 
-async function registerPatient({ email, password, name, gender, dob, medical_history }) {
+async function registerPatient({ email, password, name, phone, gender, dob, medical_history }) {
   return sequelize.transaction(async (t) => {
     const normalizedEmail = String(email).toLowerCase().trim();
     const existing = await User.findOne({ where: { email: normalizedEmail }, transaction: t });
@@ -42,7 +47,7 @@ async function registerPatient({ email, password, name, gender, dob, medical_his
       { transaction: t }
     );
     const patient = await Patient.create(
-      { user_id: user.id, name, gender, dob, medical_history },
+      { user_id: user.id, name, phone, gender, dob, medical_history },
       { transaction: t }
     );
 
@@ -77,7 +82,7 @@ async function registerDoctor({
         user_id: user.id,
         name,
         specialization,
-        medical_certificate,
+        medical_certificate: medical_certificate || "Pending license review",
         is_verified: false,
         verification_status: VERIFICATION_STATUS.PENDING
       },
@@ -142,7 +147,7 @@ async function updateCurrentUser(userId, updates) {
   if (user.role === ROLES.PATIENT) {
     const patient = await Patient.findOne({ where: { user_id: user.id } });
     if (patient) {
-      const patientFields = ["name", "gender", "dob", "medical_history"];
+      const patientFields = ["name", "phone", "gender", "dob", "medical_history"];
       const patientUpdates = {};
       for (const field of patientFields) {
         if (Object.prototype.hasOwnProperty.call(updates, field)) {
@@ -150,6 +155,15 @@ async function updateCurrentUser(userId, updates) {
         }
       }
       if (Object.keys(patientUpdates).length) {
+        if (
+          Object.prototype.hasOwnProperty.call(patientUpdates, "phone") &&
+          patientUpdates.phone !== patient.phone
+        ) {
+          await PatientDoctorConnection.update(
+            { status: "invalidated", updated_at: new Date() },
+            { where: { patient_phone: normalizePhone(patient.phone), status: "pending" } }
+          );
+        }
         await patient.update(patientUpdates);
       }
     }
@@ -176,4 +190,31 @@ async function updateCurrentUser(userId, updates) {
   return getCurrentUser(userId);
 }
 
-module.exports = { registerPatient, registerDoctor, authenticateUser, getCurrentUser, updateCurrentUser };
+async function deleteCurrentUser(userId, password) {
+  const user = await User.scope("withPassword").findByPk(userId);
+  if (!user) return false;
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) return false;
+
+  await sequelize.transaction(async (t) => {
+    if (user.role === ROLES.PATIENT) {
+      await Patient.destroy({ where: { user_id: user.id }, transaction: t });
+    }
+    if (user.role === ROLES.DOCTOR) {
+      await Doctor.destroy({ where: { user_id: user.id }, transaction: t });
+    }
+    await User.destroy({ where: { id: user.id }, transaction: t });
+  });
+
+  return true;
+}
+
+module.exports = {
+  registerPatient,
+  registerDoctor,
+  authenticateUser,
+  getCurrentUser,
+  updateCurrentUser,
+  deleteCurrentUser
+};

@@ -7,7 +7,9 @@ const {
   validateParams,
   analyzeIdSchema,
   chatThreadSchema,
-  chatMessageSchema
+  chatMessageSchema,
+  connectionRequestSchema,
+  connectionVerifySchema
 } = require("../middleware/validate");
 const {
   listContacts,
@@ -17,12 +19,18 @@ const {
   sendMessage,
   streamThread
 } = require("../controllers/chatController");
+const {
+  requestConnection,
+  verifyConnection
+} = require("../controllers/connectionController");
 
 const router = express.Router();
 
 router.use(authMiddleware, roleMiddleware([ROLES.PATIENT, ROLES.DOCTOR]));
 
 router.get("/contacts", listContacts);
+router.post("/connections/request", validateBody(connectionRequestSchema), requestConnection);
+router.post("/connections/verify", validateBody(connectionVerifySchema), verifyConnection);
 router.get("/threads", listThreads);
 router.post("/threads", validateBody(chatThreadSchema), createThread);
 router.get("/threads/:id/messages", validateParams(analyzeIdSchema), listMessages);

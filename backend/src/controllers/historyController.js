@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { XrayImage, ResultImage, DiagnosisReport, Doctor, Patient, User } = require("../models");
+const { XrayImage, ResultImage, DiagnosisReport, Doctor, Patient, User, ChatThread } = require("../models");
 const { sendSuccess, sendError } = require("../utils/response");
 
 async function getPatientHistory(req, res, next) {
@@ -129,6 +129,10 @@ async function getDoctorStats(req, res, next) {
 async function getDoctorPatients(req, res, next) {
   try {
     const doctorProfileId = req.user.profileId;
+    const threads = await ChatThread.findAll({
+      where: { doctor_id: doctorProfileId },
+      include: [{ model: Patient, as: "patient", include: [{ model: User, as: "user", attributes: ["id", "email"] }] }]
+    });
     const xrays = await XrayImage.findAll({
       where: { doctor_id: doctorProfileId },
       include: [
@@ -139,6 +143,22 @@ async function getDoctorPatients(req, res, next) {
     });
 
     const patientMap = {};
+    for (const thread of threads) {
+      if (!thread.patient) continue;
+      patientMap[thread.patient.id] = {
+        id: thread.patient.id,
+        name: thread.patient.name,
+        email: thread.patient.user?.email || "",
+        phone: thread.patient.phone || "",
+        gender: thread.patient.gender,
+        dob: thread.patient.dob,
+        medical_history: thread.patient.medical_history,
+        latestDiagnosis: null,
+        latestDate: "",
+        status: "connected"
+      };
+    }
+
     for (const xray of xrays) {
       if (!xray.patient) continue;
       const pid = xray.patient.id;
@@ -147,6 +167,7 @@ async function getDoctorPatients(req, res, next) {
           id: pid,
           name: xray.patient.name,
           email: xray.patient.user?.email || "",
+          phone: xray.patient.phone || "",
           gender: xray.patient.gender,
           dob: xray.patient.dob,
           medical_history: xray.patient.medical_history,
@@ -154,6 +175,10 @@ async function getDoctorPatients(req, res, next) {
           latestDate: xray.upload_date,
           status: xray.result_image ? "completed" : "pending"
         };
+      } else if (!patientMap[pid].latestDate) {
+        patientMap[pid].latestDiagnosis = xray.result_image?.diagnosis_output || null;
+        patientMap[pid].latestDate = xray.upload_date;
+        patientMap[pid].status = xray.result_image ? "completed" : "pending";
       }
     }
 

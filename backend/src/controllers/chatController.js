@@ -1,9 +1,9 @@
-const { Op } = require("sequelize");
 const {
   ChatThread,
   ChatMessage,
   Doctor,
   Patient,
+  PatientDoctorConnection,
   User
 } = require("../models");
 const { ROLES, VERIFICATION_STATUS } = require("../constants/roles");
@@ -95,31 +95,35 @@ async function listContacts(req, res, next) {
     }
 
     const search = String(req.query.search || "").trim().toLowerCase();
-    const whereName = search ? { name: { [Op.iLike]: `%${search}%` } } : {};
+    const profileId = profileIdFromToken(req);
+    const where =
+      req.user.role === ROLES.PATIENT
+        ? { patient_id: profileId }
+        : { doctor_id: profileId };
 
-    if (req.user.role === ROLES.PATIENT) {
-      const doctors = await Doctor.findAll({
-        where: {
-          ...whereName,
-          verification_status: VERIFICATION_STATUS.APPROVED
-        },
-        include: [{ model: User, as: "user", attributes: ["id", "email", "role"] }],
-        order: [["name", "ASC"]]
-      });
-      return sendSuccess(res, {
-        message: "Doctor contacts retrieved",
-        data: { contacts: doctors.map((doctor) => contactFromProfile(doctor, ROLES.DOCTOR)) }
-      });
-    }
-
-    const patients = await Patient.findAll({
-      where: whereName,
-      include: [{ model: User, as: "user", attributes: ["id", "email", "role"] }],
-      order: [["name", "ASC"]]
+    const threads = await ChatThread.findAll({
+      where,
+      include: PARTICIPANT_INCLUDES,
+      order: [["updated_at", "DESC"]]
     });
+
+    const contacts = threads
+      .map((thread) =>
+        req.user.role === ROLES.PATIENT
+          ? contactFromProfile(thread.doctor, ROLES.DOCTOR)
+          : contactFromProfile(thread.patient, ROLES.PATIENT)
+      )
+      .filter((contact) => {
+        if (!search) return true;
+        return (
+          contact.name.toLowerCase().includes(search) ||
+          contact.email.toLowerCase().includes(search)
+        );
+      });
+
     return sendSuccess(res, {
-      message: "Patient contacts retrieved",
-      data: { contacts: patients.map((patient) => contactFromProfile(patient, ROLES.PATIENT)) }
+      message: "Connected contacts retrieved",
+      data: { contacts }
     });
   } catch (error) {
     return next(error);
@@ -181,6 +185,18 @@ async function createThread(req, res, next) {
       }
       patientId = patient.id;
       doctorId = currentProfileId;
+    }
+
+    const existingConnection = await PatientDoctorConnection.findOne({
+      where: {
+        doctor_id: doctorId,
+        linked_patient_id: patientId,
+        status: "verified"
+      }
+    });
+    const existingThread = await ChatThread.findOne({ where: { patient_id: patientId, doctor_id: doctorId } });
+    if (!existingConnection && !existingThread) {
+      return sendError(res, { statusCode: 403, message: "Connect with this user before starting chat", code: "FORBIDDEN" });
     }
 
     const [thread] = await ChatThread.findOrCreate({

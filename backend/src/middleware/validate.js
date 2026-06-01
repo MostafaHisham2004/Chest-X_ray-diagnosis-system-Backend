@@ -46,10 +46,12 @@ const signupSchema = Joi.object({
   name: Joi.string().min(1).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
+  phone: Joi.string().min(6).max(64).optional(),
   gender: Joi.string().min(1).required(),
   dob: Joi.string().min(1).required(),
   role: Joi.string().valid("patient", "doctor").optional(),
   specialization: Joi.string().optional(),
+  medical_certificate: Joi.string().allow(null, "").optional(),
   medical_history: Joi.string().allow(null, "").optional()
 }).required();
 
@@ -74,6 +76,14 @@ const chatMessageSchema = Joi.object({
   body: Joi.string().trim().min(1).max(4000).required()
 }).required();
 
+const connectionRequestSchema = Joi.object({
+  phone: Joi.string().min(6).max(64).required()
+}).required();
+
+const connectionVerifySchema = Joi.object({
+  code: Joi.string().trim().length(6).required()
+}).required();
+
 const adminCreateUserSchema = Joi.object({
   role: Joi.string().valid("admin", "doctor", "patient").required(),
   name: Joi.when("role", {
@@ -94,6 +104,7 @@ const adminCreateUserSchema = Joi.object({
     otherwise: Joi.string().allow("", null).optional()
   }),
   medical_history: Joi.string().allow(null, "").optional(),
+  phone: Joi.string().min(6).max(64).optional(),
   specialization: Joi.when("role", {
     is: "doctor",
     then: Joi.string().min(1).default("Radiology"),
@@ -115,6 +126,7 @@ const adminUpdateUserSchema = Joi.object({
   gender: Joi.string().min(1).optional(),
   dob: Joi.string().min(1).optional(),
   medical_history: Joi.string().allow(null, "").optional(),
+  phone: Joi.string().min(6).max(64).optional(),
   specialization: Joi.string().min(1).optional(),
   medical_certificate: Joi.string().min(1).optional(),
   verification_status: Joi.string().valid("pending", "approved", "rejected").optional(),
@@ -165,6 +177,8 @@ module.exports = {
   verifyDoctorSchema,
   chatThreadSchema,
   chatMessageSchema,
+  connectionRequestSchema,
+  connectionVerifySchema,
   adminCreateUserSchema,
   adminUpdateUserSchema
 };

@@ -8,6 +8,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const xrayRoutes = require("./routes/xrayRoutes");
 const historyRoutes = require("./routes/historyRoutes");
+const otpRoutes = require("./routes/otpRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -36,6 +37,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/xray", xrayRoutes);
 app.use("/api/history", historyRoutes);
+app.use("/api/otp", otpRoutes);
 app.use(errorMiddleware);
 
 module.exports = app;

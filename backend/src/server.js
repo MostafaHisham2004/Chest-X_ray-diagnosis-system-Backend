@@ -5,6 +5,7 @@ const app = require("./app");
 const { sequelize } = require("./models");
 const { ensureAuthSchema } = require("./config/migrateAdminColumn");
 const { ensureAdminExists } = require("./utils/booststrapAdmin");
+const { getSocket } = require("./services/whatsappService");
 
 const port = Number(process.env.PORT || 5000);
 const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads");
@@ -24,6 +25,9 @@ async function start() {
       // eslint-disable-next-line no-console
       console.log(`Backend running on http://0.0.0.0:${port} (LAN devices: use your laptop IP)`);
     });
+
+    // Initialize WhatsApp connection so the pairing code appears on startup
+    getSocket().catch((err) => console.error("[WhatsApp] init error:", err.message));
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Startup failed", error);

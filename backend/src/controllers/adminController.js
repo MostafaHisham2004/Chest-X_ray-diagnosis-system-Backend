@@ -21,6 +21,7 @@ function serializeManagedUser(user) {
     profile_id: profile?.id || null,
     created_at: user.created_at,
     updated_at: user.updated_at,
+    phone: user.role === ROLES.PATIENT ? profile?.phone || null : null,
     gender: user.role === ROLES.PATIENT ? profile?.gender || null : null,
     dob: user.role === ROLES.PATIENT ? profile?.dob || null : null,
     medical_history: user.role === ROLES.PATIENT ? profile?.medical_history || "" : null,
@@ -142,8 +143,10 @@ async function updateUser(req, res, next) {
       await user.update(updates, { transaction: t });
     }
 
-    if (user.role === ROLES.PATIENT && user.patientProfile) {
-      const patientFields = ["name", "gender", "dob", "medical_history"];
+    const currentRole = updates.role || user.role;
+
+    if (currentRole === ROLES.PATIENT && user.patientProfile) {
+      const patientFields = ["name", "phone", "gender", "dob", "medical_history"];
       const patientUpdates = {};
       for (const field of patientFields) {
         if (Object.prototype.hasOwnProperty.call(req.body, field)) {

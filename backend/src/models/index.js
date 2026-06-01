@@ -7,6 +7,7 @@ const ResultImageFactory = require("./ResultImage");
 const DiagnosisReportFactory = require("./DiagnosisReport");
 const ChatThreadFactory = require("./ChatThread");
 const ChatMessageFactory = require("./ChatMessage");
+const PatientDoctorConnectionFactory = require("./PatientDoctorConnection");
 
 const User = UserFactory(sequelize);
 const Doctor = DoctorFactory(sequelize);
@@ -16,6 +17,7 @@ const ResultImage = ResultImageFactory(sequelize);
 const DiagnosisReport = DiagnosisReportFactory(sequelize);
 const ChatThread = ChatThreadFactory(sequelize);
 const ChatMessage = ChatMessageFactory(sequelize);
+const PatientDoctorConnection = PatientDoctorConnectionFactory(sequelize);
 
 User.hasOne(Patient, { foreignKey: "user_id", as: "patientProfile", onDelete: "CASCADE" });
 Patient.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -48,6 +50,11 @@ ChatMessage.belongsTo(ChatThread, { foreignKey: "thread_id", as: "thread" });
 User.hasMany(ChatMessage, { foreignKey: "sender_user_id", as: "sentChatMessages", onDelete: "CASCADE" });
 ChatMessage.belongsTo(User, { foreignKey: "sender_user_id", as: "sender" });
 
+Doctor.hasMany(PatientDoctorConnection, { foreignKey: "doctor_id", as: "connectionRequests", onDelete: "CASCADE" });
+PatientDoctorConnection.belongsTo(Doctor, { foreignKey: "doctor_id", as: "doctor" });
+Patient.hasMany(PatientDoctorConnection, { foreignKey: "linked_patient_id", as: "connectionRequests", onDelete: "SET NULL" });
+PatientDoctorConnection.belongsTo(Patient, { foreignKey: "linked_patient_id", as: "patient" });
+
 module.exports = {
   sequelize,
   User,
@@ -57,5 +64,6 @@ module.exports = {
   ResultImage,
   DiagnosisReport,
   ChatThread,
-  ChatMessage
+  ChatMessage,
+  PatientDoctorConnection
 };

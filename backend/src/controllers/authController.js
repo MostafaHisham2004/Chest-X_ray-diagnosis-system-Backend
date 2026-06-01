@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { registerPatient, registerDoctor, authenticateUser, getCurrentUser, updateCurrentUser } = require("../services/authService");
+const { registerPatient, registerDoctor, authenticateUser, getCurrentUser, updateCurrentUser, deleteCurrentUser } = require("../services/authService");
 const { ROLES, VERIFICATION_STATUS } = require("../constants/roles");
 const { sendError, sendSuccess } = require("../utils/response");
 const { sequelize, Doctor, User } = require("../models");
@@ -74,7 +74,7 @@ async function getMe(req, res, next) {
 
 async function updateMe(req, res, next) {
   try {
-    const allowedFields = ["name", "gender", "dob", "medical_history", "email", "password", "specialization"];
+    const allowedFields = ["name", "phone", "gender", "dob", "medical_history", "email", "password", "specialization"];
     const updates = {};
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, field)) {
@@ -141,4 +141,25 @@ async function requestDoctor(req, res, next) {
   }
 }
 
-module.exports = { signup, login, getMe, updateMe, requestDoctor };
+async function deleteMe(req, res, next) {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return sendError(res, { statusCode: 400, message: "Password confirmation is required", code: "VALIDATION_ERROR" });
+    }
+
+    const deleted = await deleteCurrentUser(req.user.sub, password);
+    if (!deleted) {
+      return sendError(res, { statusCode: 401, message: "Password confirmation failed", code: "UNAUTHORIZED" });
+    }
+
+    return sendSuccess(res, {
+      message: "Account deleted",
+      data: { id: req.user.sub }
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { signup, login, getMe, updateMe, requestDoctor, deleteMe };
