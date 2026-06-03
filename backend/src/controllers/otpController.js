@@ -20,6 +20,7 @@ async function sendOtpCode(req, res, next) {
       statusCode: 200,
       message: "Verification code sent",
       data: result
+
     });
   } catch (error) {
     return next(error);
@@ -33,6 +34,7 @@ async function verifyOtpCode(req, res, next) {
       statusCode: 200,
       message: "Phone number verified",
       data: result
+
     });
   } catch (error) {
     return next(error);

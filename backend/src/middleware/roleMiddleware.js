@@ -1,30 +1,17 @@
-function requireAnyRole(allowedRoles = []) {
-  const allowed = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+function roleMiddleware(allowedRoles = []) {
+  return (req, res, next) => {
+    const isAllowedRole = req.user && allowedRoles.includes(req.user.role);
+    const isAllowedAdmin =
+      req.user && allowedRoles.includes("admin") && req.user.isAdmin === true;
 
-  return (req, _res, next) => {
-    if (!req.user?.role) {
-      const err = new Error("Unauthorized");
-      err.statusCode = 401;
-      err.code = "UNAUTHORIZED";
-      return next(err);
-    }
-
-    if (!allowed.includes(req.user.role)) {
+    if (!isAllowedRole && !isAllowedAdmin) {
       const err = new Error("Forbidden for current role");
       err.statusCode = 403;
       err.code = "FORBIDDEN";
       return next(err);
     }
-
     return next();
   };
 }
 
-function requireRole(role) {
-  return requireAnyRole([role]);
-}
-
-module.exports = {
-  requireRole,
-  requireAnyRole
-};
+module.exports = roleMiddleware;

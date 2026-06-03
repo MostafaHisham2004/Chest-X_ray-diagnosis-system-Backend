@@ -1,12 +1,23 @@
 const jwt = require("jsonwebtoken");
 const { authenticateUser, registerUser } = require("../services/authService");
 const { sendTextMessage } = require("../services/whatsappService");
-const { sendError, sendSuccess } = require("../utils/response");
 
-function signToken(userId, role) {
-  return jwt.sign({ sub: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "1d"
-  });
+const { sendError, sendSuccess } = require("../utils/response");
+const { sequelize, Doctor, User } = require("../models");
+const bcrypt = require("bcrypt");
+
+function signToken(user) {
+  return jwt.sign(
+    {
+      sub: user.id,
+      role: user.role,
+      profileId: user.profile_id,
+      profile_id: user.profile_id,
+      isAdmin: Boolean(user.isAdmin)
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+  );
 }
 
 async function signup(req, res, next) {
@@ -36,6 +47,7 @@ async function signup(req, res, next) {
       message: "Signup successful",
       data: { token, role: created.role, user },
       legacy: { token, role: created.role, user }
+
     });
   } catch (error) {
     return next(error);
@@ -51,11 +63,12 @@ async function login(req, res, next) {
 
     const token = signToken(user.id, user.role);
     const payload = { id: user.id, email: user.email, name: user.name, phone: user.phone };
+
     return sendSuccess(res, {
       statusCode: 200,
       message: "Login successful",
-      data: { token, role: user.role, user: payload },
-      legacy: { token, role: user.role, user: payload }
+      data: { token, role: user.role, user },
+      legacy: { token, role: user.role, user }
     });
   } catch (error) {
     return next(error);

@@ -59,19 +59,103 @@ async function registerUser(input) {
   };
 }
 
+async function registerPatient({ email, password, name, phone, gender, dob, medical_history }) {
+  return sequelize.transaction(async (t) => {
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const existing = await User.findOne({ where: { email: normalizedEmail }, transaction: t });
+    if (existing) {
+      const err = new Error("Email already registered");
+      err.statusCode = 409;
+      err.code = "CONFLICT";
+      throw err;
+    }
+
+    const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const user = await User.create(
+      { email: normalizedEmail, password: hashed, role: ROLES.PATIENT },
+      { transaction: t }
+    );
+    const patient = await Patient.create(
+      { user_id: user.id, name, phone, gender, dob, medical_history },
+      { transaction: t }
+    );
+
+    return toAuthUser(user, patient);
+  });
+}
+
+async function registerDoctor({
+  email,
+  password,
+  name,
+  specialization,
+  medical_certificate
+}) {
+  return sequelize.transaction(async (t) => {
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const existing = await User.findOne({ where: { email: normalizedEmail }, transaction: t });
+    if (existing) {
+      const err = new Error("Email already registered");
+      err.statusCode = 409;
+      err.code = "CONFLICT";
+      throw err;
+    }
+
+    const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const user = await User.create(
+      { email: normalizedEmail, password: hashed, role: ROLES.DOCTOR },
+      { transaction: t }
+    );
+    const doctor = await Doctor.create(
+      {
+        user_id: user.id,
+        name,
+        specialization,
+        medical_certificate: medical_certificate || "Pending license review",
+        is_verified: false,
+        verification_status: VERIFICATION_STATUS.PENDING
+      },
+      { transaction: t }
+    );
+
+    return toAuthUser(user, doctor);
+  });
+}
+
 async function authenticateUser({ email, password }) {
-  let user = await Doctor.findOne({ where: { email } });
-  if (!user) {
-    user = await Patient.findOne({ where: { email } });
+  const user = await User.scope("withPassword").findOne({
+    where: { email: String(email).toLowerCase().trim() }
+  });
+  if (!user) return null;
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) return null;
+
+  if (user.role === ROLES.PATIENT) {
+    const patient = await Patient.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, patient);
   }
 
-  if (!user) {
-    return null;
+  if (user.role === ROLES.DOCTOR) {
+    const doctor = await Doctor.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, doctor);
   }
 
-  const passwordMatches = await bcrypt.compare(password, user.password);
-  if (!passwordMatches) {
-    return null;
+  return toAuthUser(user);
+}
+
+async function getCurrentUser(userId) {
+  const user = await User.findByPk(userId);
+  if (!user) return null;
+
+  if (user.role === ROLES.PATIENT) {
+    const patient = await Patient.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, patient);
+  }
+
+  if (user.role === ROLES.DOCTOR) {
+    const doctor = await Doctor.findOne({ where: { user_id: user.id } });
+    return toAuthUser(user, doctor);
   }
 
   const role = user.role || (user.specialization ? ROLES.DOCTOR : ROLES.PATIENT);

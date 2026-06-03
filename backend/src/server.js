@@ -3,12 +3,13 @@ const fs = require("fs");
 const path = require("path");
 const app = require("./app");
 const { sequelize } = require("./models");
+const { ensureAuthSchema } = require("./config/migrateAdminColumn");
+const { ensureAdminExists } = require("./utils/booststrapAdmin");
+const { getSocket } = require("./services/whatsappService");
 
 const port = Number(process.env.PORT || 5000);
 const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
-// eslint-disable-next-line no-console
-console.log(`[DB] Using DB user: ${process.env.DB_USER}`);
 
 async function ensureDatabaseSchema() {
   await sequelize.query(`
@@ -132,10 +133,17 @@ async function start() {
     );
     await ensureDatabaseSchema();
     await sequelize.sync();
-    app.listen(port, () => {
+    await ensureAuthSchema(sequelize);
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+      await ensureAdminExists();
+    }
+    app.listen(port, "0.0.0.0", () => {
       // eslint-disable-next-line no-console
-      console.log(`Backend running on :${port}`);
+      console.log(`Backend running on http://0.0.0.0:${port} (LAN devices: use your laptop IP)`);
     });
+
+    // Initialize WhatsApp connection so the pairing code appears on startup
+    getSocket().catch((err) => console.error("[WhatsApp] init error:", err.message));
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Startup failed", error);

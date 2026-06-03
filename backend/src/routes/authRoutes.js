@@ -1,10 +1,15 @@
 const express = require("express");
 const { validateBody, signupSchema, loginSchema } = require("../middleware/validate");
-const { signup, login } = require("../controllers/authController");
+const authMiddleware = require("../middleware/authMiddleware");
+const { signup, login, getMe, updateMe, requestDoctor, deleteMe } = require("../controllers/authController");
 
 const router = express.Router();
 
 router.post("/signup", validateBody(signupSchema), signup);
 router.post("/login", validateBody(loginSchema), login);
+router.get("/me", authMiddleware, getMe);
+router.patch("/me", authMiddleware, updateMe);
+router.delete("/me", authMiddleware, deleteMe);
+router.post("/request-doctor", authMiddleware, requestDoctor);
 
 module.exports = router;
