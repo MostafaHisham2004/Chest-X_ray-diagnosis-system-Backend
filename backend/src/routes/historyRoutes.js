@@ -1,29 +1,23 @@
 const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
-const { validateParams, analyzeIdSchema } = require("../middleware/validate");
+const { requireRole } = require("../middleware/roleMiddleware");
+const { ROLES } = require("../constants/roles");
 const {
-  getPatientHistory,
   getMyXrays,
   getMyStats,
-  getDoctorHistory,
   getDoctorStats,
-  getDoctorPatients
+  getDoctorPatients,
+  getPatientHistory,
+  getDoctorHistory
 } = require("../controllers/historyController");
 
 const router = express.Router();
 
-router.get(
-  "/patient/:id",
-  authMiddleware,
-  roleMiddleware(["doctor", "patient"]),
-  validateParams(analyzeIdSchema),
-  getPatientHistory
-);
-router.get("/my-xrays", authMiddleware, roleMiddleware(["patient"]), getMyXrays);
-router.get("/my-stats", authMiddleware, roleMiddleware(["patient"]), getMyStats);
-router.get("/doctor", authMiddleware, roleMiddleware(["doctor"]), getDoctorHistory);
-router.get("/doctor-stats", authMiddleware, roleMiddleware(["doctor"]), getDoctorStats);
-router.get("/doctor-patients", authMiddleware, roleMiddleware(["doctor"]), getDoctorPatients);
+router.get("/my-xrays", authMiddleware, getMyXrays);
+router.get("/my-stats", authMiddleware, getMyStats);
+router.get("/doctor-stats", authMiddleware, requireRole(ROLES.DOCTOR), getDoctorStats);
+router.get("/doctor-patients", authMiddleware, requireRole(ROLES.DOCTOR), getDoctorPatients);
+router.get("/patient/:id", authMiddleware, getPatientHistory);
+router.get("/doctor", authMiddleware, requireRole(ROLES.DOCTOR), getDoctorHistory);
 
 module.exports = router;

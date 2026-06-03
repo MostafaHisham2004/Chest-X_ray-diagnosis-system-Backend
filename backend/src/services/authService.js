@@ -1,32 +1,61 @@
 const bcrypt = require("bcrypt");
-const { sequelize, User, Patient, Doctor, PatientDoctorConnection } = require("../models");
-const { ROLES, VERIFICATION_STATUS } = require("../constants/roles");
+const { Doctor, Patient } = require("../models");
+const { ASSIGNABLE_SELF_REGISTRATION_ROLE, ROLES } = require("../constants/roles");
+const { normalizePhoneNumber } = require("./whatsappService");
 
-const BCRYPT_ROUNDS = 12;
+async function registerUser(input) {
+  const { password, role_type, ...payload } = input;
+  const role = payload.role || role_type || ASSIGNABLE_SELF_REGISTRATION_ROLE;
+  const phone = payload.phone ? normalizePhoneNumber(payload.phone) : null;
+  const hashedPassword = await bcrypt.hash(password, 12);
 
-function normalizePhone(value) {
-  return String(value || "").replace(/[^\d+]/g, "").trim();
-}
+  const [existingPatient, existingDoctor] = await Promise.all([
+    Patient.findOne({ where: { email: payload.email } }),
+    Doctor.findOne({ where: { email: payload.email } })
+  ]);
 
-function toAuthUser(user, profile = null) {
-  const isDoctor = user.role === ROLES.DOCTOR;
-  const isPatient = user.role === ROLES.PATIENT;
+  if (![ROLES.PATIENT, ROLES.DOCTOR].includes(role)) {
+    const err = new Error("Invalid registration role");
+    err.statusCode = 400;
+    err.code = "VALIDATION_ERROR";
+    throw err;
+  }
+
+  if (existingPatient || existingDoctor) {
+    const err = new Error("Email already in use");
+    err.statusCode = 409;
+    err.code = "CONFLICT";
+    throw err;
+  }
+
+  const created =
+    role === ROLES.DOCTOR
+      ? await Doctor.create({
+          name: payload.name,
+          email: payload.email,
+          phone,
+          password: hashedPassword,
+          role: ROLES.DOCTOR,
+          specialization: payload.specialization,
+          medical_certificate: payload.medical_certificate
+        })
+      : await Patient.create({
+          name: payload.name,
+          email: payload.email,
+          phone,
+          password: hashedPassword,
+          role: ROLES.PATIENT,
+          gender: payload.gender,
+          dob: payload.dob,
+          medical_history: payload.medical_history
+        });
 
   return {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    name: profile?.name || (user.role === ROLES.ADMIN ? "Admin" : ""),
-    profile_id: profile?.id || null,
-    isAdmin: user.role === ROLES.ADMIN,
-    phone: isPatient && profile ? (profile.phone || null) : null,
-    gender: isPatient && profile ? (profile.gender || null) : null,
-    dob: isPatient && profile ? (profile.dob || null) : null,
-    medical_history: isPatient && profile ? (profile.medical_history || null) : null,
-    verification_status: isDoctor ? profile?.verification_status || null : null,
-    is_verified: isDoctor ? Boolean(profile?.is_verified) : null,
-    specialization: isDoctor ? (profile?.specialization || null) : null,
-    medical_certificate: isDoctor ? (profile?.medical_certificate || null) : null
+    id: created.id,
+    email: created.email,
+    name: created.name,
+    phone: created.phone,
+    role: created.role
   };
 }
 
@@ -129,92 +158,17 @@ async function getCurrentUser(userId) {
     return toAuthUser(user, doctor);
   }
 
-  return toAuthUser(user);
-}
-
-async function updateCurrentUser(userId, updates) {
-  const user = await User.findByPk(userId);
-  if (!user) return null;
-
-  const userUpdates = {};
-  if (updates.email) userUpdates.email = updates.email;
-  if (updates.password) userUpdates.password = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
-  if (Object.keys(userUpdates).length) {
-    userUpdates.updated_at = new Date();
-    await user.update(userUpdates);
-  }
-
-  if (user.role === ROLES.PATIENT) {
-    const patient = await Patient.findOne({ where: { user_id: user.id } });
-    if (patient) {
-      const patientFields = ["name", "phone", "gender", "dob", "medical_history"];
-      const patientUpdates = {};
-      for (const field of patientFields) {
-        if (Object.prototype.hasOwnProperty.call(updates, field)) {
-          patientUpdates[field] = updates[field];
-        }
-      }
-      if (Object.keys(patientUpdates).length) {
-        if (
-          Object.prototype.hasOwnProperty.call(patientUpdates, "phone") &&
-          patientUpdates.phone !== patient.phone
-        ) {
-          await PatientDoctorConnection.update(
-            { status: "invalidated", updated_at: new Date() },
-            { where: { patient_phone: normalizePhone(patient.phone), status: "pending" } }
-          );
-        }
-        await patient.update(patientUpdates);
-      }
-    }
-    return getCurrentUser(userId);
-  }
-
-  if (user.role === ROLES.DOCTOR) {
-    const doctor = await Doctor.findOne({ where: { user_id: user.id } });
-    if (doctor) {
-      const doctorFields = ["name", "specialization", "medical_certificate"];
-      const doctorUpdates = {};
-      for (const field of doctorFields) {
-        if (Object.prototype.hasOwnProperty.call(updates, field)) {
-          doctorUpdates[field] = updates[field];
-        }
-      }
-      if (Object.keys(doctorUpdates).length) {
-        await doctor.update(doctorUpdates);
-      }
-    }
-    return getCurrentUser(userId);
-  }
-
-  return getCurrentUser(userId);
-}
-
-async function deleteCurrentUser(userId, password) {
-  const user = await User.scope("withPassword").findByPk(userId);
-  if (!user) return false;
-
-  const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return false;
-
-  await sequelize.transaction(async (t) => {
-    if (user.role === ROLES.PATIENT) {
-      await Patient.destroy({ where: { user_id: user.id }, transaction: t });
-    }
-    if (user.role === ROLES.DOCTOR) {
-      await Doctor.destroy({ where: { user_id: user.id }, transaction: t });
-    }
-    await User.destroy({ where: { id: user.id }, transaction: t });
-  });
-
-  return true;
+  const role = user.role || (user.specialization ? ROLES.DOCTOR : ROLES.PATIENT);
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    role
+  };
 }
 
 module.exports = {
-  registerPatient,
-  registerDoctor,
-  authenticateUser,
-  getCurrentUser,
-  updateCurrentUser,
-  deleteCurrentUser
+  registerUser,
+  authenticateUser
 };
