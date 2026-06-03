@@ -42,19 +42,40 @@ function validateParams(schema) {
   };
 }
 
-// Signup is patient only — no role field needed
 const signupSchema = Joi.object({
   name: Joi.string().min(1).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
+  phone: Joi.string().min(7).allow(null, "").optional(),
   gender: Joi.string().min(1).required(),
   dob: Joi.string().min(1).required(),
-  medical_history: Joi.string().allow(null, "").optional()
+  role: Joi.string().valid(ROLES.PATIENT, ROLES.DOCTOR).default(ROLES.PATIENT),
+  role_type: Joi.string().valid(ROLES.PATIENT, ROLES.DOCTOR).optional(),
+  medical_history: Joi.string().allow(null, "").optional(),
+  specialization: Joi.when("role", {
+    is: ROLES.DOCTOR,
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow(null, "").optional()
+  }),
+  medical_certificate: Joi.when("role", {
+    is: ROLES.DOCTOR,
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow(null, "").optional()
+  })
 }).required();
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(1).required()
+}).required();
+
+const otpSendSchema = Joi.object({
+  phone: Joi.string().min(7).allow(null, "").optional()
+}).required();
+
+const otpVerifySchema = Joi.object({
+  phone: Joi.string().min(7).required(),
+  code: Joi.string().pattern(/^\d{6}$/).required()
 }).required();
 
 const analyzeIdSchema = Joi.object({
@@ -99,5 +120,7 @@ module.exports = {
   validateXrayUpload,
   signupSchema,
   loginSchema,
+  otpSendSchema,
+  otpVerifySchema,
   analyzeIdSchema
 };

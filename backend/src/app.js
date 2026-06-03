@@ -6,6 +6,7 @@ const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 const xrayRoutes = require("./routes/xrayRoutes");
 const historyRoutes = require("./routes/historyRoutes");
+const otpRoutes = require("./routes/otpRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -30,6 +31,7 @@ app.get("/", (_req, res) =>
 );
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/auth", authRoutes);
+app.use("/api/otp", otpRoutes);
 app.use("/api/xray", xrayRoutes);
 app.use("/api/history", historyRoutes);
 app.use(errorMiddleware);

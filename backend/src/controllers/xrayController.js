@@ -1,7 +1,31 @@
-const { XrayImage, ResultImage } = require("../models");
+const { XrayImage, ResultImage, Patient } = require("../models");
 const { analyzeXrayWithAI } = require("../services/aiService");
+const { sendTextMessage } = require("../services/whatsappService");
 const { ROLES } = require("../constants/roles");
 const { sendError, sendSuccess } = require("../utils/response");
+
+function formatDiagnosisSummary(diagnosisOutput = {}) {
+  const label = diagnosisOutput.label || diagnosisOutput.prediction || "analysis completed";
+  const confidence = Number(diagnosisOutput.confidence);
+  const confidenceText =
+    Number.isFinite(confidence) && confidence > 0
+      ? ` with ${Math.round(confidence * 100)}% confidence`
+      : "";
+
+  return `${label}${confidenceText}`;
+}
+
+async function notifyPatientAnalysisComplete(xray, result) {
+  const patient = await Patient.findByPk(xray.patient_id);
+  if (!patient?.phone) return;
+
+  const summary = formatDiagnosisSummary(result.diagnosis_output || {});
+  const patientName = patient.name ? ` ${patient.name}` : "";
+  await sendTextMessage(
+    patient.phone,
+    `Hello${patientName}, your MediScan AI X-ray analysis is complete. Result summary: ${summary}. Please review it with your doctor.`
+  );
+}
 
 async function uploadXray(req, res, next) {
   try {
@@ -56,6 +80,11 @@ async function analyzeXray(req, res, next) {
       ...result.toJSON(),
       original_image_url: xray.image_path
     };
+
+    notifyPatientAnalysisComplete(xray, result).catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn("[WhatsApp] Diagnosis notification failed:", error.message);
+    });
 
     return sendSuccess(res, {
       statusCode: 200,

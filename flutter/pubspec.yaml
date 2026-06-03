@@ -1,0 +1,29 @@
+name: mediscan_ai
+description: AI X-ray Diagnosis App - MediScan AI
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  provider: ^6.1.2
+  http: ^1.2.2
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+  fl_chart: ^0.68.0
+  image_picker: ^1.0.4
+  percent_indicator: ^4.2.3
+  flutter_animate: ^4.5.0
+  intl: ^0.19.0
+  google_fonts: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

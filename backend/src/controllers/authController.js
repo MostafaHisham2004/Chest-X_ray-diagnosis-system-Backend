@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
-const { authenticateUser, registerPatient } = require("../services/authService");
-const { ASSIGNABLE_SELF_REGISTRATION_ROLE } = require("../constants/roles");
+const { authenticateUser, registerUser } = require("../services/authService");
+const { sendTextMessage } = require("../services/whatsappService");
 const { sendError, sendSuccess } = require("../utils/response");
 
 function signToken(userId, role) {
@@ -9,17 +9,33 @@ function signToken(userId, role) {
   });
 }
 
-// Signup is patient only — no role needed from request
 async function signup(req, res, next) {
   try {
-    const created = await registerPatient(req.body);
+    const created = await registerUser(req.body);
     const token = signToken(created.id, created.role);
-    const user = { id: created.id, email: created.email, name: created.name };
+    const user = {
+      id: created.id,
+      email: created.email,
+      name: created.name,
+      phone: created.phone,
+      role: created.role
+    };
+
+    if (created.phone) {
+      sendTextMessage(
+        created.phone,
+        `Welcome to MediScan AI, ${created.name}. Your ${created.role} account was created successfully.`
+      ).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.warn("[WhatsApp] Signup notification failed:", error.message);
+      });
+    }
+
     return sendSuccess(res, {
       statusCode: 201,
       message: "Signup successful",
-      data: { token, role: ASSIGNABLE_SELF_REGISTRATION_ROLE, user },
-      legacy: { token, role: ASSIGNABLE_SELF_REGISTRATION_ROLE, user }
+      data: { token, role: created.role, user },
+      legacy: { token, role: created.role, user }
     });
   } catch (error) {
     return next(error);
@@ -34,7 +50,7 @@ async function login(req, res, next) {
     }
 
     const token = signToken(user.id, user.role);
-    const payload = { id: user.id, email: user.email, name: user.name };
+    const payload = { id: user.id, email: user.email, name: user.name, phone: user.phone };
     return sendSuccess(res, {
       statusCode: 200,
       message: "Login successful",
