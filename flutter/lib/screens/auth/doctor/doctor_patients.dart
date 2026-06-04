@@ -13,7 +13,9 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/shared_widgets.dart';
 
 class DoctorPatientsScreen extends StatefulWidget {
-  const DoctorPatientsScreen({super.key});
+  final int refreshKey;
+
+  const DoctorPatientsScreen({super.key, this.refreshKey = 0});
 
   @override
   State<DoctorPatientsScreen> createState() => _DoctorPatientsScreenState();
@@ -39,6 +41,14 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen>
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _load(silent: true);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant DoctorPatientsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshKey != widget.refreshKey) {
+      _load(silent: true);
+    }
   }
 
   @override
@@ -302,8 +312,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen>
                             _TableHeader('Name', flex: 2),
                             _TableHeader('Diagnosis', flex: 2),
                             _TableHeader('Date', flex: 2),
-                            _TableHeader('Diagnosis Status', flex: 2),
-                            _TableHeader('Connection', flex: 2),
+                            _TableHeader('Status', flex: 2),
                             _TableHeader('', flex: 1),
                           ],
                         ),
@@ -511,12 +520,16 @@ class _ConnectionChip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -569,7 +582,6 @@ class _PatientRow extends StatelessWidget {
     final diagnosis = patient['latestDiagnosis']?['label'] as String? ??
         patient['latestDiagnosis']?['prediction'] as String? ??
         'Pending';
-    final status = patient['status'] as String? ?? 'pending';
     final date = patient['latestDate'] as String? ?? '';
     final formattedDate = date.isNotEmpty ? date.split('T')[0] : '';
 
@@ -580,6 +592,8 @@ class _PatientRow extends StatelessWidget {
           Expanded(
               flex: 2,
               child: Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -587,32 +601,36 @@ class _PatientRow extends StatelessWidget {
           Expanded(
               flex: 2,
               child: Text(diagnosis,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmSans(
                       fontSize: 13, color: theme.textTheme.bodyMedium?.color))),
           Expanded(
               flex: 2,
               child: Text(formattedDate,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmSans(
                       fontSize: 13,
                       color: isDark
                           ? AppTheme.darkTextSecondary
                           : AppTheme.textSecondary))),
-          Expanded(
-              flex: 2,
-              child:
-                  DiagnosisBadge(label: status, type: diagnosisToType(status))),
-          // Connection status chip (NEW)
           Expanded(flex: 2, child: _ConnectionChip(status: connectionStatus)),
           Expanded(
             flex: 1,
-            child: TextButton(
-              onPressed: onView,
-              style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
-              child: Text('View',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppTheme.primary)),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                onPressed: onView,
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                tooltip: 'View',
+                color: AppTheme.primary,
+                constraints: const BoxConstraints(
+                  minWidth: 36,
+                  minHeight: 36,
+                ),
+                padding: EdgeInsets.zero,
+              ),
             ),
           ),
         ],

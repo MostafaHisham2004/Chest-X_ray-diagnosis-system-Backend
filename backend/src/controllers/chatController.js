@@ -14,10 +14,39 @@ function getUserId(user) {
   return user?.id ?? user?.sub ?? null;
 }
 
+async function ensureThreadForContact(contact) {
+  let thread = await ChatThread.findOne({
+    where: { doctor_id: contact.doctor_id, patient_id: contact.patient_id }
+  });
+
+  if (!thread) {
+    thread = await ChatThread.create({
+      doctor_id: contact.doctor_id,
+      patient_id: contact.patient_id
+    });
+  }
+
+  return thread;
+}
+
+async function ensureActiveContactThreads(userId, role) {
+  if (!["PATIENT", "DOCTOR"].includes(role)) return;
+
+  const where = { status: "ACTIVE" };
+  if (role === "PATIENT") {
+    where.patient_id = userId;
+  } else {
+    where.doctor_id = userId;
+  }
+
+  const contacts = await Contact.findAll({ where });
+  await Promise.all(contacts.map(ensureThreadForContact));
+}
+
 async function getContacts(req, res, next) {
   try {
     const userId = getUserId(req.user);
-    const role = req.user.role;
+    const role = String(req.user.role || "").toUpperCase();
 
     const contacts = [];
 
@@ -92,14 +121,9 @@ async function getContacts(req, res, next) {
 async function getThreads(req, res, next) {
   try {
     const userId = getUserId(req.user);
-    const role = req.user.role;
+    const role = String(req.user.role || "").toUpperCase();
 
-    const where = {};
-    if (role === "PATIENT") {
-      where.patient_id = userId;
-    } else if (role === "DOCTOR") {
-      where.doctor_id = userId;
-    } else {
+    if (!["PATIENT", "DOCTOR"].includes(role)) {
       return sendSuccess(res, {
         statusCode: 200,
         message: "Threads retrieved successfully.",
@@ -107,8 +131,15 @@ async function getThreads(req, res, next) {
       });
     }
 
+    await ensureActiveContactThreads(userId, role);
+
     const threads = await ChatThread.findAll({
-      where,
+      where: {
+        [Op.or]: [
+          { patient_id: userId },
+          { doctor_id: userId }
+        ]
+      },
       include: [
         {
           model: Patient,
@@ -134,9 +165,10 @@ async function getThreads(req, res, next) {
       });
 
       const contact = await Contact.findOne({
-        where: { doctor_id: thread.doctor_id, patient_id: thread.patient_id }
+        where: { doctor_id: thread.doctor_id, patient_id: thread.patient_id, status: "ACTIVE" }
       });
-      const status = contact ? contact.status : "PENDING_VERIFICATION";
+      if (!contact) continue;
+      const status = contact.status;
 
       serializedThreads.push({
         id: thread.id,
@@ -190,7 +222,7 @@ async function requestConnection(req, res, next) {
     const doctorId = getUserId(req.user);
     const { phone } = req.body;
 
-    if (req.user.role !== "DOCTOR") {
+    if (String(req.user.role || "").toUpperCase() !== "DOCTOR") {
       return sendError(res, {
         statusCode: 403,
         message: "Only doctors can initiate contact connections.",
@@ -241,10 +273,11 @@ async function requestConnection(req, res, next) {
     });
 
     if (contact && contact.status === "ACTIVE") {
-      return sendError(res, {
-        statusCode: 400,
+      const thread = await ensureThreadForContact(contact);
+      return sendSuccess(res, {
+        statusCode: 200,
         message: "You are already connected to this patient.",
-        code: "BAD_REQUEST"
+        data: { alreadyConnected: true, chatThreadId: thread.id }
       });
     }
 
@@ -298,7 +331,7 @@ async function verifyConnection(req, res, next) {
     const patientId = getUserId(req.user);
     const { code } = req.body;
 
-    if (req.user.role !== "PATIENT") {
+    if (String(req.user.role || "").toUpperCase() !== "PATIENT") {
       return sendError(res, {
         statusCode: 403,
         message: "Only patients can verify connection authorization.",
@@ -350,7 +383,7 @@ async function verifyConnection(req, res, next) {
 async function createThread(req, res, next) {
   try {
     const currentUserId = getUserId(req.user);
-    const currentUserRole = req.user.role;
+    const currentUserRole = String(req.user.role || "").toUpperCase();
     const { user_id } = req.body;
 
     let doctorId, patientId;
@@ -372,7 +405,7 @@ async function createThread(req, res, next) {
       where: { doctor_id: doctorId, patient_id: patientId }
     });
 
-    if (!contact || contact.status !== "ACTIVE") {
+    if (!contact || (contact.status !== "ACTIVE" && contact.status !== "PENDING_VERIFICATION")) {
       return sendError(res, {
         statusCode: 403,
         message: "Active connection is required to start a chat thread.",

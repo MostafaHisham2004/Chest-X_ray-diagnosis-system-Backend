@@ -25,6 +25,7 @@ class PatientMainScreen extends StatefulWidget {
 class _PatientMainScreenState extends State<PatientMainScreen>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
+  int _chatRefreshKey = 0;
   final _chatService = ChatService();
   bool _checkingPending = false;
 
@@ -32,7 +33,7 @@ class _PatientMainScreenState extends State<PatientMainScreen>
         const PatientDashboard(),
         const PatientUploadScreen(),
         const PatientXraysScreen(),
-        const CareChatScreen(),
+        CareChatScreen(refreshKey: _chatRefreshKey),
         const PatientProfileScreen(),
         if (isAdmin) const AdminMainScreen(),
       ];
@@ -86,8 +87,18 @@ class _PatientMainScreenState extends State<PatientMainScreen>
     );
     if (confirmed == true && mounted) {
       // Navigate patient directly to the Chat tab
-      setState(() => _currentIndex = 3);
+      setState(() {
+        _currentIndex = 3;
+        _chatRefreshKey++;
+      });
     }
+  }
+
+  void _selectIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+      if (index == 3) _chatRefreshKey++;
+    });
   }
 
   @override
@@ -126,35 +137,35 @@ class _PatientMainScreenState extends State<PatientMainScreen>
                     label: 'Home',
                     index: 0,
                     current: _currentIndex,
-                    onTap: (i) => setState(() => _currentIndex = i)),
+                    onTap: _selectIndex),
                 _NavItem(
                     icon: Icons.upload_file_outlined,
                     activeIcon: Icons.upload_file,
                     label: 'Upload',
                     index: 1,
                     current: _currentIndex,
-                    onTap: (i) => setState(() => _currentIndex = i)),
+                    onTap: _selectIndex),
                 _NavItem(
                     icon: Icons.image_outlined,
                     activeIcon: Icons.image,
                     label: 'X-rays',
                     index: 2,
                     current: _currentIndex,
-                    onTap: (i) => setState(() => _currentIndex = i)),
+                    onTap: _selectIndex),
                 _NavItem(
                     icon: Icons.forum_outlined,
                     activeIcon: Icons.forum,
                     label: 'Chat',
                     index: 3,
                     current: _currentIndex,
-                    onTap: (i) => setState(() => _currentIndex = i)),
+                    onTap: _selectIndex),
                 _NavItem(
                     icon: Icons.person_outline,
                     activeIcon: Icons.person,
                     label: 'Profile',
                     index: 4,
                     current: _currentIndex,
-                    onTap: (i) => setState(() => _currentIndex = i)),
+                    onTap: _selectIndex),
                 if (isAdmin)
                   _NavItem(
                       icon: Icons.admin_panel_settings_outlined,
@@ -162,7 +173,7 @@ class _PatientMainScreenState extends State<PatientMainScreen>
                       label: 'Admin',
                       index: 5,
                       current: _currentIndex,
-                      onTap: (i) => setState(() => _currentIndex = i)),
+                      onTap: _selectIndex),
               ],
             ),
           ),

@@ -77,9 +77,9 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                         onProfileTap!();
                         return;
                       }
-                      final route = role == 'doctor'
+                      final route = role.toLowerCase() == 'doctor'
                           ? '/doctor/profile'
-                          : role == 'admin'
+                          : role.toLowerCase() == 'admin'
                               ? '/admin'
                               : '/patient/profile';
                       Navigator.of(context).pushNamed(route);
@@ -172,7 +172,7 @@ class SessionAppTopBar extends StatelessWidget implements PreferredSizeWidget {
           onProfileTap: onProfileTap,
           isAdmin: auth.isAdmin,
           isAdminLoading: auth.isLoading,
-          role: auth.role ?? auth.user?.role ?? 'patient',
+          role: (auth.role ?? auth.user?.role ?? 'patient').toLowerCase(),
           hideProfileMenu: hideProfileMenu,
         );
       },

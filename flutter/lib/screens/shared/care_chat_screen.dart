@@ -14,7 +14,9 @@ import '../../widgets/shared_widgets.dart';
 import '../auth/admin/admin_dashboard_view.dart';
 
 class CareChatScreen extends StatefulWidget {
-  const CareChatScreen({super.key});
+  final int refreshKey;
+
+  const CareChatScreen({super.key, this.refreshKey = 0});
 
   @override
   State<CareChatScreen> createState() => _CareChatScreenState();
@@ -31,7 +33,9 @@ class _CareChatScreenState extends State<CareChatScreen> {
   List<ChatThread> _threads = [];
   List<ChatMessage> _messages = [];
   ChatThread? _selectedThread;
+  int? _selectedThreadId;
   bool _isLoading = true;
+  bool _isLoadingMessages = false;
   bool _isSending = false;
   bool _isConnecting = false;
   String? _error;
@@ -40,6 +44,14 @@ class _CareChatScreenState extends State<CareChatScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadChat());
+  }
+
+  @override
+  void didUpdateWidget(covariant CareChatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshKey != widget.refreshKey) {
+      _loadChat();
+    }
   }
 
   @override
@@ -69,7 +81,25 @@ class _CareChatScreenState extends State<CareChatScreen> {
         _threads = threads;
         _isLoading = false;
       });
-      if (threads.isNotEmpty && _selectedThread == null) {
+
+      ChatThread? threadToSelect;
+      if (_selectedThreadId != null) {
+        for (final thread in threads) {
+          if (thread.id == _selectedThreadId) {
+            threadToSelect = thread;
+            break;
+          }
+        }
+      }
+
+      threadToSelect ??= _selectedThread;
+      if (threadToSelect != null) {
+        final stillExists =
+            threads.any((thread) => thread.id == threadToSelect!.id);
+        if (stillExists) {
+          await _selectThread(threadToSelect, preserveMessages: true);
+        }
+      } else if (threads.isNotEmpty) {
         await _selectThread(threads.first);
       }
     } on ApiException catch (e) {
@@ -92,7 +122,8 @@ class _CareChatScreenState extends State<CareChatScreen> {
     if (token == null) return;
 
     try {
-      final currentRole = context.read<AuthProvider>().role ?? 'patient';
+      final currentRole =
+          (context.read<AuthProvider>().role ?? 'patient').toLowerCase();
       ChatThread? existing;
       for (final thread in _threads) {
         if (thread.otherParticipant(currentRole).userId == contact.userId) {
@@ -116,16 +147,29 @@ class _CareChatScreenState extends State<CareChatScreen> {
     }
   }
 
-  Future<void> _selectThread(ChatThread thread) async {
+  Future<void> _selectThread(
+    ChatThread thread, {
+    bool preserveMessages = false,
+  }) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
+    final currentRole =
+        (context.read<AuthProvider>().role ?? 'patient').toLowerCase();
 
     setState(() {
       _selectedThread = thread;
-      _messages = [];
+      _selectedThreadId = thread.id;
+      if (!preserveMessages) _messages = [];
+      _isLoadingMessages = true;
       _error = null;
     });
     await _messageSubscription?.cancel();
+
+    final other = thread.otherParticipant(currentRole);
+    if (other.verificationStatus == 'PENDING_VERIFICATION') {
+      if (mounted) setState(() => _isLoadingMessages = false);
+      return; // Do not fetch messages or listen to stream for pending connections
+    }
 
     try {
       final messages = await _service.fetchMessages(
@@ -133,7 +177,10 @@ class _CareChatScreenState extends State<CareChatScreen> {
         threadId: thread.id,
       );
       if (!mounted) return;
-      setState(() => _messages = messages);
+      setState(() {
+        _messages = messages;
+        _isLoadingMessages = false;
+      });
       _scrollToBottom();
       _messageSubscription = _service
           .streamMessages(token: token, threadId: thread.id)
@@ -144,10 +191,16 @@ class _CareChatScreenState extends State<CareChatScreen> {
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _isLoadingMessages = false;
+      });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _error = 'Unable to load messages.');
+      setState(() {
+        _error = 'Unable to load messages.';
+        _isLoadingMessages = false;
+      });
     }
   }
 
@@ -321,6 +374,7 @@ class _CareChatScreenState extends State<CareChatScreen> {
                                       token: token,
                                       phone: phone,
                                     );
+                                    if (!mounted || !context.mounted) return;
                                     Navigator.pop(context);
                                     _showSnack(
                                         'Connection request sent to patient.');
@@ -370,7 +424,7 @@ class _CareChatScreenState extends State<CareChatScreen> {
     if (auth.isAdmin) {
       return const AdminDashboardView();
     }
-    final role = auth.role ?? auth.user?.role ?? 'patient';
+    final role = (auth.role ?? auth.user?.role ?? 'patient').toLowerCase();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
@@ -581,13 +635,8 @@ class _CareChatScreenState extends State<CareChatScreen> {
       children: [
         _ConversationHeader(contact: other),
         Expanded(
-          child: _messages.isEmpty
-              ? const _EmptyConversation(
-                  icon: Icons.chat_bubble_outline,
-                  title: 'No messages yet',
-                  message: 'Send the first message when you are ready.',
-                )
-              : ListView.builder(
+          child: _messages.isNotEmpty
+              ? ListView.builder(
                   controller: _scrollCtrl,
                   padding: const EdgeInsets.all(16),
                   itemCount: _messages.length,
@@ -598,7 +647,14 @@ class _CareChatScreenState extends State<CareChatScreen> {
                       isMine: message.senderUserId == auth.user?.id,
                     );
                   },
-                ),
+                )
+              : _isLoadingMessages
+                  ? const Center(child: CircularProgressIndicator())
+                  : const _EmptyConversation(
+                      icon: Icons.chat_bubble_outline,
+                      title: 'No messages yet',
+                      message: 'Send the first message when you are ready.',
+                    ),
         ),
         SafeArea(
           top: false,
@@ -1394,15 +1450,15 @@ class _DoctorWaitingForPatientCard extends StatelessWidget {
                   ),
                   children: [
                     TextSpan(
-                      text: patientName.isNotEmpty ? patientName : 'The patient',
+                      text:
+                          patientName.isNotEmpty ? patientName : 'The patient',
                       style: GoogleFonts.dmSans(
                         fontWeight: FontWeight.w700,
                         color: theme.textTheme.bodyLarge?.color,
                       ),
                     ),
                     const TextSpan(
-                      text:
-                          ' has received the verification code on WhatsApp. '
+                      text: ' has received the verification code on WhatsApp. '
                           'Once they confirm, the connection will be activated '
                           'and you can start chatting.',
                     ),

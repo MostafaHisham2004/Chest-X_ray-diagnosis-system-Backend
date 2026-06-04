@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const { authenticateUser, registerUser } = require("../services/authService");
 const { sendTextMessage } = require("../services/whatsappService");
 const { sendError, sendSuccess } = require("../utils/response");
@@ -50,7 +51,7 @@ async function login(req, res, next) {
       return sendError(res, { statusCode: 401, message: "Invalid credentials", code: "UNAUTHORIZED" });
     }
 
-    if (user.role === 'DOCTOR' && user.verification_status !== 'approved') {
+    if (user.role === "DOCTOR" && user.approval_status !== "APPROVED") {
       return res.status(403).json({ success: false, message: "Account Pending Approval" });
     }
 
@@ -80,15 +81,7 @@ async function getMe(req, res, next) {
     }
 
     const token = signToken(user.id, user.role);
-    const profile = user.role === "DOCTOR" ? user.doctor : user.patient;
-    const payload = {
-      id: user.id,
-      email: user.email,
-      name: profile ? profile.name : "Admin",
-      phone: user.phone,
-      role: user.role,
-      verification_status: user.verification_status
-    };
+    const payload = serializeAuthUser(user);
 
     return sendSuccess(res, {
       statusCode: 200,
@@ -101,4 +94,106 @@ async function getMe(req, res, next) {
   }
 }
 
-module.exports = { signup, login, getMe };
+function serializeAuthUser(user) {
+  const profile = user.role === "DOCTOR" ? user.doctor : user.patient;
+  return {
+    id: user.id,
+    profile_id: profile?.id || user.id,
+    email: user.email,
+    name: profile ? profile.name : "Admin",
+    phone: user.phone,
+    role: user.role,
+    gender: user.patient?.gender || null,
+    dob: user.patient?.dob || null,
+    medical_history: user.patient?.medical_history || null,
+    specialization: user.doctor?.specialization || null,
+    medical_certificate: user.doctor?.medical_certificate || null,
+    is_verified: user.is_verified,
+    verification_status: user.verification_status
+  };
+}
+
+async function updateMe(req, res, next) {
+  try {
+    // eslint-disable-next-line no-console
+    console.log("[Profile Update] body:", req.body);
+
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      return sendError(res, { statusCode: 401, message: "Missing authenticated user.", code: "UNAUTHORIZED" });
+    }
+
+    const user = await User.findByPk(userId, {
+      include: [
+        { model: Doctor, as: "doctor" },
+        { model: Patient, as: "patient" }
+      ]
+    });
+
+    if (!user) {
+      return sendError(res, { statusCode: 404, message: "User not found.", code: "NOT_FOUND" });
+    }
+
+    const {
+      email,
+      phone,
+      password,
+      name,
+      gender,
+      dob,
+      medical_history,
+      specialization,
+      medical_certificate
+    } = req.body || {};
+
+    const userUpdates = {};
+    if (email !== undefined) userUpdates.email = email;
+    if (phone !== undefined) userUpdates.phone = phone;
+    if (password) userUpdates.password = await bcrypt.hash(password, 12);
+
+    if (Object.keys(userUpdates).length) {
+      await user.update(userUpdates);
+    }
+
+    if (user.role === "PATIENT" && user.patient) {
+      const patientUpdates = {};
+      if (name !== undefined) patientUpdates.name = name;
+      if (gender !== undefined) patientUpdates.gender = String(gender).toLowerCase();
+      if (dob !== undefined) patientUpdates.dob = dob;
+      if (medical_history !== undefined) patientUpdates.medical_history = medical_history;
+      if (Object.keys(patientUpdates).length) {
+        await user.patient.update(patientUpdates);
+      }
+    }
+
+    if (user.role === "DOCTOR" && user.doctor) {
+      const doctorUpdates = {};
+      if (name !== undefined) doctorUpdates.name = name;
+      if (specialization !== undefined) doctorUpdates.specialization = specialization;
+      if (medical_certificate !== undefined) doctorUpdates.medical_certificate = medical_certificate;
+      if (Object.keys(doctorUpdates).length) {
+        await user.doctor.update(doctorUpdates);
+      }
+    }
+
+    const updated = await User.findByPk(userId, {
+      include: [
+        { model: Doctor, as: "doctor" },
+        { model: Patient, as: "patient" }
+      ]
+    });
+    const updatedUser = serializeAuthUser(updated);
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Profile updated successfully.",
+      data: { updatedUser, user: updatedUser, role: updated.role }
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[Profile Update] error:", error.message, error.stack);
+    return next(error);
+  }
+}
+
+module.exports = { signup, login, getMe, updateMe };

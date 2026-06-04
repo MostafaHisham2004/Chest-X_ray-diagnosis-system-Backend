@@ -15,14 +15,16 @@ class DoctorMainScreen extends StatefulWidget {
 
 class _DoctorMainScreenState extends State<DoctorMainScreen> {
   int _currentIndex = 0;
+  int _patientsRefreshKey = 0;
+  int _chatRefreshKey = 0;
 
-  final List<Widget> _screens = const [
-    DoctorDashboard(),
-    DoctorUploadScreen(),
-    DoctorPatientsScreen(),
-    CareChatScreen(),
-    DoctorProfileScreen(),
-  ];
+  void _selectIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+      if (index == 2) _patientsRefreshKey++;
+      if (index == 3) _chatRefreshKey++;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +32,13 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth > 900;
+    final screens = [
+      const DoctorDashboard(),
+      const DoctorUploadScreen(),
+      DoctorPatientsScreen(refreshKey: _patientsRefreshKey),
+      CareChatScreen(refreshKey: _chatRefreshKey),
+      const DoctorProfileScreen(),
+    ];
 
     return Scaffold(
       body: Row(
@@ -37,7 +46,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
           if (isWide)
             NavigationRail(
               selectedIndex: _currentIndex,
-              onDestinationSelected: (i) => setState(() => _currentIndex = i),
+              onDestinationSelected: _selectIndex,
               labelType: NavigationRailLabelType.all,
               backgroundColor: theme.cardTheme.color,
               indicatorColor: AppTheme.primary.withOpacity(0.1),
@@ -74,7 +83,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
               ],
             ),
           Expanded(
-            child: IndexedStack(index: _currentIndex, children: _screens),
+            child: IndexedStack(index: _currentIndex, children: screens),
           ),
         ],
       ),
@@ -109,35 +118,35 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
                           label: 'Home',
                           index: 0,
                           current: _currentIndex,
-                          onTap: (i) => setState(() => _currentIndex = i)),
+                          onTap: _selectIndex),
                       _NavItem(
                           icon: Icons.upload_file_outlined,
                           activeIcon: Icons.upload_file,
                           label: 'Upload',
                           index: 1,
                           current: _currentIndex,
-                          onTap: (i) => setState(() => _currentIndex = i)),
+                          onTap: _selectIndex),
                       _NavItem(
                           icon: Icons.people_outline,
                           activeIcon: Icons.people,
                           label: 'Patients',
                           index: 2,
                           current: _currentIndex,
-                          onTap: (i) => setState(() => _currentIndex = i)),
+                          onTap: _selectIndex),
                       _NavItem(
                           icon: Icons.forum_outlined,
                           activeIcon: Icons.forum,
                           label: 'Chat',
                           index: 3,
                           current: _currentIndex,
-                          onTap: (i) => setState(() => _currentIndex = i)),
+                          onTap: _selectIndex),
                       _NavItem(
                           icon: Icons.person_outline,
                           activeIcon: Icons.person,
                           label: 'Profile',
                           index: 4,
                           current: _currentIndex,
-                          onTap: (i) => setState(() => _currentIndex = i)),
+                          onTap: _selectIndex),
                     ],
                   ),
                 ),

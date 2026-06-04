@@ -73,7 +73,7 @@ class ChatThread {
   }
 
   ChatContact otherParticipant(String currentRole) {
-    return currentRole == 'doctor' ? patient : doctor;
+    return currentRole.toLowerCase() == 'doctor' ? patient : doctor;
   }
 }
 

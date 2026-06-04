@@ -1,4 +1,4 @@
-const { XrayImage, ResultImage, DiagnosisReport, Doctor, Patient } = require("../models");
+const { XrayImage, ResultImage, DiagnosisReport, Doctor, Patient, Contact, User } = require("../models");
 const { sendSuccess } = require("../utils/response");
 
 function serializeResultImage(resultImage) {
@@ -128,25 +128,58 @@ async function getDoctorStats(req, res, next) {
 async function getDoctorPatients(req, res, next) {
   try {
     const doctorId = req.user.sub;
-    const xrays = await XrayImage.findAll({
-      where: { doctor_id: doctorId },
-      include: [{ model: Patient }],
-      order: [["upload_date", "DESC"]]
+
+    const activeContacts = await Contact.findAll({
+      where: { doctor_id: doctorId, status: "ACTIVE" },
+      include: [
+        {
+          model: Patient,
+          as: "patient",
+          include: [{ model: User, as: "user" }]
+        }
+      ],
+      order: [["updated_at", "DESC"]]
     });
 
-    const patientsById = new Map();
+    const patientIds = activeContacts
+      .map((contact) => contact.patient_id)
+      .filter((id) => id !== null && id !== undefined);
+
+    const xrays = patientIds.length
+      ? await XrayImage.findAll({
+          where: { doctor_id: doctorId, patient_id: patientIds },
+          include: [{ model: ResultImage }],
+          order: [["upload_date", "DESC"]]
+        })
+      : [];
+
+    const latestXrayByPatientId = new Map();
     xrays.forEach((xray) => {
-      const json = typeof xray.toJSON === "function" ? xray.toJSON() : xray;
-      const patient = serializePatient(json.Patient || json.patient);
-      if (patient && !patientsById.has(patient.id)) {
-        patientsById.set(patient.id, {
-          ...patient,
-          last_xray_date: json.upload_date
-        });
+      if (!latestXrayByPatientId.has(xray.patient_id)) {
+        latestXrayByPatientId.set(xray.patient_id, xray);
       }
     });
 
-    const patients = Array.from(patientsById.values());
+    const patients = activeContacts
+      .map((contact) => {
+        const patient = serializePatient(contact.patient);
+        if (!patient) return null;
+        const latestXray = latestXrayByPatientId.get(contact.patient_id);
+        const latestXrayJson = latestXray && typeof latestXray.toJSON === "function"
+          ? latestXray.toJSON()
+          : latestXray;
+        const resultImage = serializeResultImage(latestXrayJson?.ResultImage || latestXrayJson?.result_image);
+
+        return {
+          ...patient,
+          connection_status: contact.status,
+          last_xray_date: latestXrayJson?.upload_date || null,
+          latestDate: latestXrayJson?.upload_date || null,
+          latestDiagnosis: resultImage?.diagnosis_output || null,
+          status: resultImage ? "completed" : "pending"
+        };
+      })
+      .filter(Boolean);
 
     return sendSuccess(res, {
       statusCode: 200,

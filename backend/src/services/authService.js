@@ -103,7 +103,8 @@ async function authenticateUser({ email, password }) {
     name: profile ? profile.name : "Admin",
     phone: user.phone,
     role,
-    verification_status: user.verification_status
+    verification_status: user.verification_status,
+    approval_status: user.doctor?.approval_status || null
   };
 }
 
