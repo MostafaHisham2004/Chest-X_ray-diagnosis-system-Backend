@@ -85,4 +85,43 @@ class AdminService {
       recentMessages: recentMessages.whereType<Map<String, dynamic>>().toList(),
     );
   }
+
+  Future<List<ManagedUser>> fetchPendingDoctors(String token) async {
+    final body = await _api.get('/api/admin/doctors?status=PENDING', token: token);
+    final data = body['data'] as List? ?? const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ManagedUser.fromJson)
+        .toList();
+  }
+
+  Future<List<ManagedUser>> fetchAllUsers(String token) async {
+    final body = await _api.get('/api/admin/doctors', token: token);
+    final data = body['data'] as List? ?? const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ManagedUser.fromJson)
+        .toList();
+  }
+
+  Future<void> approveDoctor({
+    required String token,
+    required int id,
+  }) async {
+    await _api.put('/api/admin/doctors/$id/approve', token: token);
+  }
+
+  Future<void> rejectDoctor({
+    required String token,
+    required int id,
+  }) async {
+    await _api.put('/api/admin/doctors/$id/reject', token: token);
+  }
+
+  Future<void> suspendUser({
+    required String token,
+    required int id,
+  }) async {
+    await _api.put('/api/admin/users/$id/suspend', token: token);
+  }
 }

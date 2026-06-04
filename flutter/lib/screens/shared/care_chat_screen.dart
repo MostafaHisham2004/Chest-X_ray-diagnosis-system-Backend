@@ -11,6 +11,7 @@ import '../../services/api_client.dart';
 import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
+import '../auth/admin/admin_dashboard_view.dart';
 
 class CareChatScreen extends StatefulWidget {
   const CareChatScreen({super.key});
@@ -220,9 +221,149 @@ class _CareChatScreenState extends State<CareChatScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _verifyContactLink(String code) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _service.verifyConnection(token: token, code: code);
+      _showSnack('Connection verified successfully.');
+      await _loadChat();
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (_) {
+      _showSnack('Verification failed.');
+    }
+  }
+
+  void _showAddPatientSheet() {
+    final phoneCtrl = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final cardBg = isDark ? AppTheme.darkCardBg : Colors.white;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Add Patient Connection',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Enter the patient\'s mobile number to send a secure WhatsApp validation code.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Patient Phone Number',
+                        hintText: 'Patient Phone Number (e.g., +201...) ',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final phone = phoneCtrl.text.trim();
+                                if (phone.isEmpty) {
+                                  _showSnack('Enter a valid phone number.');
+                                  return;
+                                }
+                                setModalState(() => isSubmitting = true);
+                                try {
+                                  final token = context.read<AuthProvider>().token;
+                                  if (token != null) {
+                                    await _service.sendConnectionRequest(
+                                      token: token,
+                                      phone: phone,
+                                    );
+                                    Navigator.pop(context);
+                                    _showSnack('Connection request sent to patient.');
+                                    _loadChat();
+                                  }
+                                } on ApiException catch (e) {
+                                  _showSnack(e.message);
+                                } catch (_) {
+                                  _showSnack('Could not initiate connection request.');
+                                } finally {
+                                  setModalState(() => isSubmitting = false);
+                                }
+                              },
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Send Verification Code',
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    if (auth.isAdmin) {
+      return const AdminDashboardView();
+    }
     final role = auth.role ?? auth.user?.role ?? 'patient';
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -237,23 +378,44 @@ class _CareChatScreenState extends State<CareChatScreen> {
             width: double.infinity,
             color: theme.appBarTheme.backgroundColor,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  'Care Chat',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: theme.textTheme.headlineMedium?.color,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Care Chat',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: theme.textTheme.headlineMedium?.color,
+                        ),
+                      ),
+                      Text(
+                        role == 'doctor'
+                            ? 'Message your patients securely'
+                            : 'Message verified doctors securely',
+                        style: GoogleFonts.dmSans(fontSize: 13, color: txtSec),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  role == 'doctor'
-                      ? 'Message your patients securely'
-                      : 'Message verified doctors securely',
-                  style: GoogleFonts.dmSans(fontSize: 13, color: txtSec),
-                ),
+                if (role == 'doctor')
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddPatientSheet(),
+                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                    label: Text(
+                      'Start New Patient Consultation',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -359,10 +521,40 @@ class _CareChatScreenState extends State<CareChatScreen> {
         message: role == 'doctor'
             ? 'Choose a patient to start messaging.'
             : 'Choose a doctor to start messaging.',
+        action: role == 'doctor' && _contacts.isEmpty && _threads.isEmpty
+            ? ElevatedButton.icon(
+                onPressed: () => _showAddPatientSheet(),
+                icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                label: Text(
+                  'Start New Patient Consultation',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              )
+            : null,
       );
     }
 
     final other = thread.otherParticipant(role);
+    if (role == 'patient' && other.verificationStatus == 'PENDING_VERIFICATION') {
+      return Column(
+        children: [
+          _ConversationHeader(contact: other),
+          Expanded(
+            child: _PatientConnectionVerificationPane(
+              contact: other,
+              onVerify: (code) => _verifyContactLink(code),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         _ConversationHeader(contact: other),
@@ -857,11 +1049,13 @@ class _EmptyConversation extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
+  final Widget? action;
 
   const _EmptyConversation({
     required this.icon,
     required this.title,
     required this.message,
+    this.action,
   });
 
   @override
@@ -892,6 +1086,10 @@ class _EmptyConversation extends StatelessWidget {
               textAlign: TextAlign.center,
               style: GoogleFonts.dmSans(fontSize: 13, color: txtSec),
             ),
+            if (action != null) ...[
+              const SizedBox(height: 24),
+              action!,
+            ],
           ],
         ),
       ),
@@ -911,4 +1109,139 @@ bool _isContactSelected(
 String _formatMessageTime(DateTime? date) {
   if (date == null) return '';
   return DateFormat.jm().format(date.toLocal());
+}
+
+class _PatientConnectionVerificationPane extends StatefulWidget {
+  final ChatContact contact;
+  final ValueChanged<String> onVerify;
+
+  const _PatientConnectionVerificationPane({
+    required this.contact,
+    required this.onVerify,
+  });
+
+  @override
+  State<_PatientConnectionVerificationPane> createState() => _PatientConnectionVerificationPaneState();
+}
+
+class _PatientConnectionVerificationPaneState extends State<_PatientConnectionVerificationPane> {
+  final _codeCtrl = TextEditingController();
+  bool _isVerifying = false;
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(
+                Icons.shield_outlined,
+                size: 48,
+                color: AppTheme.primary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Verify Connection',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Dr. ${widget.contact.name} wants to connect with you. Enter the 6-digit WhatsApp authorization code you received.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(fontSize: 13, color: txtSec, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _codeCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 4,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Verification Code',
+                  counterText: '',
+                  prefixIcon: Icon(Icons.lock_open_outlined),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isVerifying
+                      ? null
+                      : () async {
+                          final code = _codeCtrl.text.trim();
+                          if (code.length != 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Enter the 6-digit code.')),
+                            );
+                            return;
+                          }
+                          setState(() => _isVerifying = true);
+                          widget.onVerify(code);
+                          if (mounted) setState(() => _isVerifying = false);
+                        },
+                  child: _isVerifying
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Verify Code',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

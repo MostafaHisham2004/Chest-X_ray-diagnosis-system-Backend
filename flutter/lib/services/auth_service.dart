@@ -64,13 +64,9 @@ class AuthService {
     await _api.delete('/auth/me', token: token, body: {'password': password});
   }
 
-  Future<AppUser> fetchMe(String token) async {
+  Future<AuthSession> fetchMe(String token) async {
     final body = await _api.get('/auth/me', token: token);
-    final data = body['data'] as Map<String, dynamic>? ?? {};
-    final userJson = data['user'] as Map<String, dynamic>? ?? {};
-    final role =
-        data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
-    return AppUser.fromJson({...userJson, 'role': role});
+    return _sessionFromBody(body);
   }
 
   Future<void> requestDoctor({

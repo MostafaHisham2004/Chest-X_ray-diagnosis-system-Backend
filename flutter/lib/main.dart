@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'screens/auth/admin/admin_main.dart';
+import 'screens/auth/admin/admin_dashboard_view.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/auth/doctor/doctor_profile.dart';
 import 'screens/shared/otp_verification_screen.dart';
@@ -52,6 +53,7 @@ class MediScanApp extends StatelessWidget {
       routes: {
         '/auth': (_) => const AuthScreen(),
         '/admin': (_) => const AdminMainScreen(),
+        '/admin/dashboard': (_) => const AdminDashboardView(),
         '/doctor/profile': (_) => const DoctorProfileScreen(),
         '/patient/profile': (_) => const PatientProfileScreen(),
         '/otp': (_) => const OtpVerificationScreen(),

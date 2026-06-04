@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
+import 'admin/admin_dashboard_view.dart';
 import 'doctor/doctor_main.dart';
 import 'patient/patient_main.dart';
 
@@ -174,13 +175,18 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     }
 
-    final destination = auth.role == 'doctor'
-        ? const DoctorMainScreen()
-        : const PatientMainScreen();
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => destination),
-    );
+    final userRole = auth.role?.toUpperCase() ?? '';
+    if (userRole == 'ADMIN') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboardView()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainUserNavigationView()),
+      );
+    }
   }
 
   void _showMessage(String message) {

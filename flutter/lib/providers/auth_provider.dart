@@ -22,7 +22,9 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated =>
       status == AuthStatus.authenticated && user != null;
   bool get isAdmin =>
-      role == 'admin' || user?.role == 'admin' || (user?.isAdmin ?? false);
+      role?.toLowerCase() == 'admin' ||
+      user?.role?.toLowerCase() == 'admin' ||
+      (user?.isAdmin ?? false);
 
   Future<bool> login({
     required String email,
@@ -111,9 +113,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> refreshProfile() async {
     if (token == null) return;
     try {
-      final refreshed = await _authService.fetchMe(token!);
-      user = refreshed;
-      role = refreshed.role;
+      final session = await _authService.fetchMe(token!);
+      token = session.token;
+      user = session.user;
+      role = session.role;
       notifyListeners();
     } on ApiException catch (e) {
       errorMessage = e.message;

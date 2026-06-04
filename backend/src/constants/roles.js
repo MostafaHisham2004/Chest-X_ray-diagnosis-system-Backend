@@ -1,7 +1,7 @@
 const ROLES = Object.freeze({
-  PATIENT: "patient",
-  DOCTOR: "doctor",
-  ADMIN: "admin"
+  PATIENT: "PATIENT",
+  DOCTOR: "DOCTOR",
+  ADMIN: "ADMIN"
 });
 
 const ASSIGNABLE_SELF_REGISTRATION_ROLE = ROLES.PATIENT;

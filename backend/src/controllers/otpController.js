@@ -1,14 +1,12 @@
 const { sendOtp, verifyOtp } = require("../services/otpService");
-const { Doctor, Patient } = require("../models");
-const { ROLES } = require("../constants/roles");
+const { User } = require("../models");
 const { sendSuccess } = require("../utils/response");
 
 async function getAuthenticatedUserPhone(user) {
   const userId = user?.sub || user?.id;
   if (!userId) return null;
 
-  const model = user.role === ROLES.DOCTOR || user.role === ROLES.ADMIN ? Doctor : Patient;
-  const record = await model.findByPk(userId, { attributes: ["phone"] });
+  const record = await User.findByPk(userId, { attributes: ["phone"] });
   return record?.phone || null;
 }
 

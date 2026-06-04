@@ -56,7 +56,7 @@ class AppUser {
       email: json['email'] as String? ?? '',
       isAdmin: json['isAdmin'] == true ||
           json['is_admin'] == true ||
-          json['role'] == 'admin',
+          (json['role'] as String?)?.toLowerCase() == 'admin',
       role: json['role'] as String? ?? 'patient',
       phone: json['phone'] as String?,
       gender: json['gender'] as String?,

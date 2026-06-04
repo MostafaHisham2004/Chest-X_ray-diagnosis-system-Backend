@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const { authenticateUser, registerUser } = require("../services/authService");
 const { sendTextMessage } = require("../services/whatsappService");
 const { sendError, sendSuccess } = require("../utils/response");
+const { User, Doctor, Patient } = require("../models");
 
 function signToken(userId, role) {
   return jwt.sign({ sub: userId, role }, process.env.JWT_SECRET, {
@@ -49,6 +50,10 @@ async function login(req, res, next) {
       return sendError(res, { statusCode: 401, message: "Invalid credentials", code: "UNAUTHORIZED" });
     }
 
+    if (user.role === 'DOCTOR' && user.verification_status !== 'approved') {
+      return res.status(403).json({ success: false, message: "Account Pending Approval" });
+    }
+
     const token = signToken(user.id, user.role);
     const payload = { id: user.id, email: user.email, name: user.name, phone: user.phone };
     return sendSuccess(res, {
@@ -62,4 +67,38 @@ async function login(req, res, next) {
   }
 }
 
-module.exports = { signup, login };
+async function getMe(req, res, next) {
+  try {
+    const user = await User.findByPk(req.user.sub || req.user.id, {
+      include: [
+        { model: Doctor, as: "doctor" },
+        { model: Patient, as: "patient" }
+      ]
+    });
+    if (!user) {
+      return sendError(res, { statusCode: 404, message: "User not found" });
+    }
+
+    const token = signToken(user.id, user.role);
+    const profile = user.role === "DOCTOR" ? user.doctor : user.patient;
+    const payload = {
+      id: user.id,
+      email: user.email,
+      name: profile ? profile.name : "Admin",
+      phone: user.phone,
+      role: user.role,
+      verification_status: user.verification_status
+    };
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Profile retrieved successfully",
+      data: { token, role: user.role, user: payload },
+      legacy: { token, role: user.role, user: payload }
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { signup, login, getMe };

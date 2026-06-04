@@ -12,112 +12,172 @@ console.log(`[DB] Using DB user: ${process.env.DB_USER}`);
 
 async function ensureDatabaseSchema() {
   await sequelize.query(`
+    BEGIN;
+
+    -- 1. Users table
+    CREATE TABLE IF NOT EXISTS "Users" (
+      "id" SERIAL PRIMARY KEY,
+      "email" VARCHAR(255) NOT NULL UNIQUE,
+      "password" VARCHAR(255) NOT NULL,
+      "phone" VARCHAR(40),
+      "role" VARCHAR(255) NOT NULL DEFAULT 'PATIENT',
+      "is_verified" BOOLEAN NOT NULL DEFAULT false,
+      "verification_status" VARCHAR(30) NOT NULL DEFAULT 'pending',
+      "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+      "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    );
+
+    ALTER TABLE "Users" ALTER COLUMN "role" DROP DEFAULT;
+    ALTER TABLE "Users" ALTER COLUMN "role" TYPE VARCHAR(20) USING UPPER("role"::text);
+    ALTER TABLE "Users" ALTER COLUMN "role" SET DEFAULT 'PATIENT';
+    ALTER TABLE "Users" DROP CONSTRAINT IF EXISTS users_role_check;
+    UPDATE "Users" SET "role" = UPPER("role");
+
     DO $$
-    DECLARE
-      table_name text;
-      default_role text;
     BEGIN
-      FOREACH table_name IN ARRAY ARRAY['Patients', 'patients', 'Doctors', 'doctors', 'Users', 'users']
-      LOOP
-        IF to_regclass(format('%I', table_name)) IS NOT NULL THEN
-          default_role := CASE
-            WHEN lower(table_name) = 'doctors' THEN 'doctor'
-            ELSE 'patient'
-          END;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_role_check') THEN
+        ALTER TABLE "Users" ADD CONSTRAINT users_role_check CHECK (role IN ('PATIENT', 'DOCTOR', 'ADMIN'));
+      END IF;
+    END $$;
 
-          EXECUTE format(
-            'ALTER TABLE %I ADD COLUMN IF NOT EXISTS role VARCHAR(20)',
-            table_name
-          );
+    -- 2. Add user_id column if not exists
+    ALTER TABLE IF EXISTS "Patients" ADD COLUMN IF NOT EXISTS "user_id" INTEGER;
+    ALTER TABLE IF EXISTS "Doctors" ADD COLUMN IF NOT EXISTS "user_id" INTEGER;
 
-          EXECUTE format(
-            'ALTER TABLE %I ADD COLUMN IF NOT EXISTS phone VARCHAR(40)',
-            table_name
-          );
+    -- 3. Populate Users
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'Patients' AND column_name = 'email'
+      ) THEN
+        INSERT INTO "Users" ("email", "password", "phone", "role", "is_verified", "verification_status")
+        SELECT "email", "password", "phone", 'PATIENT', "is_verified", "verification_status"
+        FROM "Patients"
+        ON CONFLICT ("email") DO NOTHING;
 
-          EXECUTE format(
-            'ALTER TABLE %I ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT false',
-            table_name
-          );
+        UPDATE "Patients" p
+        SET "user_id" = u.id
+        FROM "Users" u
+        WHERE p.email = u.email AND p.user_id IS NULL;
+      END IF;
 
-          EXECUTE format(
-            'ALTER TABLE %I ADD COLUMN IF NOT EXISTS verification_status VARCHAR(30) NOT NULL DEFAULT ''pending''',
-            table_name
-          );
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'Doctors' AND column_name = 'email'
+      ) THEN
+        INSERT INTO "Users" ("email", "password", "phone", "role", "is_verified", "verification_status")
+        SELECT "email", "password", "phone", 'DOCTOR', "is_verified", "verification_status"
+        FROM "Doctors"
+        ON CONFLICT ("email") DO NOTHING;
 
-          EXECUTE format(
-            'UPDATE %I SET role = %L WHERE role IS NULL',
-            table_name,
-            default_role
-          );
+        UPDATE "Doctors" d
+        SET "user_id" = u.id
+        FROM "Users" u
+        WHERE d.email = u.email AND d.user_id IS NULL;
+      END IF;
+    END $$;
 
-          EXECUTE format(
-            'ALTER TABLE %I ALTER COLUMN role SET DEFAULT %L',
-            table_name,
-            default_role
-          );
+    -- 5. Drop referencing constraints
+    ALTER TABLE IF EXISTS "Chat_Threads" DROP CONSTRAINT IF EXISTS "Chat_Threads_patient_id_fkey";
+    ALTER TABLE IF EXISTS "Diagnosis_Reports" DROP CONSTRAINT IF EXISTS "Diagnosis_Reports_patient_id_fkey";
+    ALTER TABLE IF EXISTS "Xray_Images" DROP CONSTRAINT IF EXISTS "Xray_Images_patient_id_fkey";
 
-          EXECUTE format(
-            'ALTER TABLE %I ALTER COLUMN role SET NOT NULL',
-            table_name
-          );
+    ALTER TABLE IF EXISTS "Chat_Threads" DROP CONSTRAINT IF EXISTS "Chat_Threads_doctor_id_fkey";
+    ALTER TABLE IF EXISTS "Diagnosis_Reports" DROP CONSTRAINT IF EXISTS "Diagnosis_Reports_doctor_id_fkey";
+    ALTER TABLE IF EXISTS "Xray_Images" DROP CONSTRAINT IF EXISTS "Xray_Images_doctor_id_fkey";
+
+    -- 6. Modify Patients primary key
+    DO $$
+    BEGIN
+      IF to_regclass('"Patients"') IS NOT NULL THEN
+        IF NOT EXISTS (SELECT 1 FROM "Patients" WHERE "user_id" IS NULL) THEN
+          ALTER TABLE "Patients" DROP CONSTRAINT IF EXISTS "Patients_pkey";
+          ALTER TABLE "Patients" DROP CONSTRAINT IF EXISTS "patients_pkey";
+          ALTER TABLE "Patients" DROP COLUMN IF EXISTS "id";
+          ALTER TABLE "Patients" ALTER COLUMN "user_id" SET NOT NULL;
+          ALTER TABLE "Patients" ADD CONSTRAINT "Patients_pkey" PRIMARY KEY ("user_id");
         END IF;
-      END LOOP;
+      END IF;
     END $$;
-  `);
 
-  await sequelize.query(`
+    -- 7. Modify Doctors primary key
     DO $$
     BEGIN
-      IF to_regclass('"Patients"') IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'patients_role_check') THEN
-        ALTER TABLE "Patients"
-          ADD CONSTRAINT patients_role_check CHECK (role IN ('patient')) NOT VALID;
-      END IF;
-
-      IF to_regclass('patients') IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'patients_lower_role_check') THEN
-        ALTER TABLE patients
-          ADD CONSTRAINT patients_lower_role_check CHECK (role IN ('patient')) NOT VALID;
-      END IF;
-
-      IF to_regclass('"Doctors"') IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'doctors_role_check') THEN
-        ALTER TABLE "Doctors"
-          ADD CONSTRAINT doctors_role_check CHECK (role IN ('doctor', 'admin')) NOT VALID;
-      END IF;
-
-      IF to_regclass('doctors') IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'doctors_lower_role_check') THEN
-        ALTER TABLE doctors
-          ADD CONSTRAINT doctors_lower_role_check CHECK (role IN ('doctor', 'admin')) NOT VALID;
-      END IF;
-
-      IF to_regclass('"Users"') IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_role_check') THEN
-        ALTER TABLE "Users"
-          ADD CONSTRAINT users_role_check CHECK (role IN ('patient', 'doctor', 'admin')) NOT VALID;
-      END IF;
-
-      IF to_regclass('users') IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_lower_role_check') THEN
-        ALTER TABLE users
-          ADD CONSTRAINT users_lower_role_check CHECK (role IN ('patient', 'doctor', 'admin')) NOT VALID;
+      IF to_regclass('"Doctors"') IS NOT NULL THEN
+        IF NOT EXISTS (SELECT 1 FROM "Doctors" WHERE "user_id" IS NULL) THEN
+          ALTER TABLE "Doctors" DROP CONSTRAINT IF EXISTS "Doctors_pkey";
+          ALTER TABLE "Doctors" DROP CONSTRAINT IF EXISTS "doctors_pkey";
+          ALTER TABLE "Doctors" DROP COLUMN IF EXISTS "id";
+          ALTER TABLE "Doctors" ALTER COLUMN "user_id" SET NOT NULL;
+          ALTER TABLE "Doctors" ADD CONSTRAINT "Doctors_pkey" PRIMARY KEY ("user_id");
+        END IF;
       END IF;
     END $$;
-  `);
 
-  const [roleColumns] = await sequelize.query(`
-    SELECT table_name, column_name, data_type, is_nullable, column_default
-    FROM information_schema.columns
-    WHERE table_schema = current_schema()
-      AND table_name IN ('Patients', 'patients', 'Doctors', 'doctors', 'Users', 'users')
-      AND column_name IN ('role', 'phone', 'is_verified', 'verification_status')
-    ORDER BY table_name;
+    -- 8. Add user_id foreign keys to Users
+    ALTER TABLE IF EXISTS "Patients" DROP CONSTRAINT IF EXISTS "patients_user_id_users_id_fk";
+    ALTER TABLE IF EXISTS "Patients" ADD CONSTRAINT "patients_user_id_users_id_fk" FOREIGN KEY (user_id) REFERENCES "Users"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+    ALTER TABLE IF EXISTS "Doctors" DROP CONSTRAINT IF EXISTS "doctors_user_id_users_id_fk";
+    ALTER TABLE IF EXISTS "Doctors" ADD CONSTRAINT "doctors_user_id_users_id_fk" FOREIGN KEY (user_id) REFERENCES "Users"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+    -- 9. Recreate referencing constraints
+    ALTER TABLE IF EXISTS "Chat_Threads" ADD CONSTRAINT "Chat_Threads_patient_id_fkey" FOREIGN KEY (patient_id) REFERENCES "Patients"(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ALTER TABLE IF EXISTS "Diagnosis_Reports" ADD CONSTRAINT "Diagnosis_Reports_patient_id_fkey" FOREIGN KEY (patient_id) REFERENCES "Patients"(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ALTER TABLE IF EXISTS "Xray_Images" ADD CONSTRAINT "Xray_Images_patient_id_fkey" FOREIGN KEY (patient_id) REFERENCES "Patients"(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+    ALTER TABLE IF EXISTS "Chat_Threads" ADD CONSTRAINT "Chat_Threads_doctor_id_fkey" FOREIGN KEY (doctor_id) REFERENCES "Doctors"(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ALTER TABLE IF EXISTS "Diagnosis_Reports" ADD CONSTRAINT "Diagnosis_Reports_doctor_id_fkey" FOREIGN KEY (doctor_id) REFERENCES "Doctors"(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ALTER TABLE IF EXISTS "Xray_Images" ADD CONSTRAINT "Xray_Images_doctor_id_fkey" FOREIGN KEY (doctor_id) REFERENCES "Doctors"(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+    -- 10. Drop duplicate columns
+    ALTER TABLE IF EXISTS "Patients" DROP COLUMN IF EXISTS "email";
+    ALTER TABLE IF EXISTS "Patients" DROP COLUMN IF EXISTS "password";
+    ALTER TABLE IF EXISTS "Patients" DROP COLUMN IF EXISTS "role";
+    ALTER TABLE IF EXISTS "Patients" DROP COLUMN IF EXISTS "phone";
+    ALTER TABLE IF EXISTS "Patients" DROP COLUMN IF EXISTS "is_verified";
+    ALTER TABLE IF EXISTS "Patients" DROP COLUMN IF EXISTS "verification_status";
+
+    ALTER TABLE IF EXISTS "Doctors" DROP COLUMN IF EXISTS "email";
+    ALTER TABLE IF EXISTS "Doctors" DROP COLUMN IF EXISTS "password";
+    ALTER TABLE IF EXISTS "Doctors" DROP COLUMN IF EXISTS "role";
+    ALTER TABLE IF EXISTS "Doctors" DROP COLUMN IF EXISTS "phone";
+    ALTER TABLE IF EXISTS "Doctors" DROP COLUMN IF EXISTS "is_verified";
+    ALTER TABLE IF EXISTS "Doctors" DROP COLUMN IF EXISTS "verification_status";
+
+    -- 11. Add approval_status to Doctors
+    ALTER TABLE IF EXISTS "Doctors" ADD COLUMN IF NOT EXISTS "approval_status" VARCHAR(20) NOT NULL DEFAULT 'PENDING';
+    DO $$
+    BEGIN
+      IF to_regclass('"Doctors"') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'doctors_approval_status_check') THEN
+        ALTER TABLE "Doctors" ADD CONSTRAINT doctors_approval_status_check CHECK (approval_status IN ('PENDING', 'APPROVED', 'REJECTED'));
+      END IF;
+    END $$;
+
+    -- 12. Contacts table
+    CREATE TABLE IF NOT EXISTS "Contacts" (
+      "id" SERIAL PRIMARY KEY,
+      "doctor_id" INTEGER NOT NULL REFERENCES "Doctors"("user_id") ON UPDATE CASCADE ON DELETE CASCADE,
+      "patient_id" INTEGER NOT NULL REFERENCES "Patients"("user_id") ON UPDATE CASCADE ON DELETE CASCADE,
+      "status" VARCHAR(30) NOT NULL DEFAULT 'PENDING_VERIFICATION',
+      "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+      "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+      UNIQUE ("doctor_id", "patient_id")
+    );
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contacts_status_check') THEN
+        ALTER TABLE "Contacts" ADD CONSTRAINT contacts_status_check CHECK (status IN ('PENDING_VERIFICATION', 'ACTIVE'));
+      END IF;
+    END $$;
+
+    COMMIT;
   `);
 
   // eslint-disable-next-line no-console
-  console.log("[DB] Role column check:", roleColumns);
+  console.log("[DB] Relational database logic and administrative structure successfully verified/migrated.");
 }
 
 async function start() {
@@ -132,6 +192,11 @@ async function start() {
     );
     await ensureDatabaseSchema();
     await sequelize.sync();
+    
+    // Run bootstrapping for admin account
+    const bootstrap = require("./config/bootstrap");
+    await bootstrap();
+
     app.listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`Backend running on :${port}`);

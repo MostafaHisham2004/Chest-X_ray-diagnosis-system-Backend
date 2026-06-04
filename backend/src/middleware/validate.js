@@ -47,22 +47,49 @@ const signupSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
   phone: Joi.string().min(7).allow(null, "").optional(),
-  gender: Joi.string().min(1).required(),
-  dob: Joi.string().min(1).required(),
-  role: Joi.string().valid(ROLES.PATIENT, ROLES.DOCTOR).default(ROLES.PATIENT),
-  role_type: Joi.string().valid(ROLES.PATIENT, ROLES.DOCTOR).optional(),
-  medical_history: Joi.string().allow(null, "").optional(),
-  specialization: Joi.when("role", {
+  role: Joi.string().uppercase().valid(ROLES.PATIENT, ROLES.DOCTOR).default(ROLES.PATIENT),
+  role_type: Joi.string().uppercase().valid(ROLES.PATIENT, ROLES.DOCTOR).optional(),
+  // Patient-only fields
+  gender: Joi.when("role_type", {
     is: ROLES.DOCTOR,
-    then: Joi.string().min(1).required(),
-    otherwise: Joi.string().allow(null, "").optional()
+    then: Joi.string().allow(null, "").optional(),
+    otherwise: Joi.when("role", {
+      is: ROLES.DOCTOR,
+      then: Joi.string().allow(null, "").optional(),
+      otherwise: Joi.string().min(1).required()
+    })
   }),
-  medical_certificate: Joi.when("role", {
+  dob: Joi.when("role_type", {
+    is: ROLES.DOCTOR,
+    then: Joi.string().allow(null, "").optional(),
+    otherwise: Joi.when("role", {
+      is: ROLES.DOCTOR,
+      then: Joi.string().allow(null, "").optional(),
+      otherwise: Joi.string().min(1).required()
+    })
+  }),
+  medical_history: Joi.string().allow(null, "").optional(),
+  // Doctor-only fields
+  specialization: Joi.when("role_type", {
     is: ROLES.DOCTOR,
     then: Joi.string().min(1).required(),
-    otherwise: Joi.string().allow(null, "").optional()
+    otherwise: Joi.when("role", {
+      is: ROLES.DOCTOR,
+      then: Joi.string().min(1).required(),
+      otherwise: Joi.string().allow(null, "").optional()
+    })
+  }),
+  medical_certificate: Joi.when("role_type", {
+    is: ROLES.DOCTOR,
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.when("role", {
+      is: ROLES.DOCTOR,
+      then: Joi.string().min(1).required(),
+      otherwise: Joi.string().allow(null, "").optional()
+    })
   })
 }).required();
+
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -90,7 +117,7 @@ function validateXrayUpload(req, _res, next) {
     return next(err);
   }
 
-  const role = req.user?.role;
+  const role = String(req.user?.role || "").toUpperCase();
   const patientIdSchema = Joi.number().integer().positive();
   const schema = Joi.object({
     patient_id: role === ROLES.DOCTOR ? patientIdSchema.required() : patientIdSchema.optional()

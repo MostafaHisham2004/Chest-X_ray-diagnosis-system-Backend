@@ -40,7 +40,7 @@ class ChatService {
     required String phone,
   }) async {
     await _api.post(
-      '/api/chat/connections/request',
+      '/api/chat/initiate-handshake',
       token: token,
       body: {'phone': phone},
     );

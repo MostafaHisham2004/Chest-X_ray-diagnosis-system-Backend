@@ -9,7 +9,10 @@ function requireAnyRole(allowedRoles = []) {
       return next(err);
     }
 
-    if (!allowed.includes(req.user.role)) {
+    const userRole = String(req.user.role).toLowerCase();
+    const allowedLower = allowed.map((r) => String(r).toLowerCase());
+
+    if (!allowedLower.includes(userRole)) {
       const err = new Error("Forbidden for current role");
       err.statusCode = 403;
       err.code = "FORBIDDEN";

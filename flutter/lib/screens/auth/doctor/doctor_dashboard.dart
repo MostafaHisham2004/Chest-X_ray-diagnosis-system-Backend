@@ -38,6 +38,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       _error = null;
     });
     try {
+      await context.read<AuthProvider>().refreshProfile();
       final stats = await _service.fetchDoctorStats(token);
       if (!mounted) return;
       setState(() {
