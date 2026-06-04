@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/language_provider.dart';
 import 'screens/auth/admin/admin_main.dart';
 import 'screens/auth/admin/admin_dashboard_view.dart';
 import 'screens/auth/auth_screen.dart';
@@ -14,7 +16,7 @@ import 'theme/theme_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
+  GoogleFonts.config.allowRuntimeFetching = true;
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -29,6 +31,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
       child: const MediScanApp(),
     ),
@@ -41,14 +44,40 @@ class MediScanApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final languageProvider = context.watch<LanguageProvider>();
 
     return MaterialApp(
       title: 'MediScan AI',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme, // Light
-      darkTheme: AppTheme.darkTheme, // Dark
-      themeMode:
-          themeProvider.themeMode, // Follows ThemeProvider (default: system)
+
+      // ── Locale & i18n ──────────────────────────────────────────
+      locale: languageProvider.appLocale,
+      supportedLocales: const [
+        Locale('en', ''),
+        Locale('ar', ''),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
+      // ── Theme ──────────────────────────────────────────────────
+      theme: AppTheme.theme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeProvider.themeMode,
+
+      // ── RTL / LTR Directionality ───────────────────────────────
+      builder: (context, child) {
+        return Directionality(
+          textDirection: languageProvider.isRTL
+              ? TextDirection.rtl
+              : TextDirection.ltr,
+          child: child!,
+        );
+      },
+
+      // ── Routes ─────────────────────────────────────────────────
       home: const AuthScreen(),
       routes: {
         '/auth': (_) => const AuthScreen(),

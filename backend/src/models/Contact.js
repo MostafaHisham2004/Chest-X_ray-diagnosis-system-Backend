@@ -30,6 +30,19 @@ module.exports = (sequelize) =>
         allowNull: false,
         defaultValue: "PENDING_VERIFICATION"
       },
+      otp_code: {
+        type: DataTypes.STRING(10),
+        allowNull: true
+      },
+      otp_expires_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      otp_used: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false
+      },
       created_at: {
         type: DataTypes.DATE,
         allowNull: false,

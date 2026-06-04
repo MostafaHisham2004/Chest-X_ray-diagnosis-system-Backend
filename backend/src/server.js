@@ -1,4 +1,16 @@
 require("dotenv").config();
+
+// Validate required environment variables immediately after env injection
+require("./config/envValidation")();
+
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception caught:', error);
+});
+
 const fs = require("fs");
 const path = require("path");
 const app = require("./app");
@@ -9,6 +21,13 @@ const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "uploads
 fs.mkdirSync(uploadDir, { recursive: true });
 // eslint-disable-next-line no-console
 console.log(`[DB] Using DB user: ${process.env.DB_USER}`);
+
+const requiredEvoVars = ['EVO_API_URL', 'EVO_API_KEY', 'EVO_INSTANCE_NAME'];
+for (const v of requiredEvoVars) {
+  if (!process.env[v]) {
+    throw new Error(`Startup Error: Missing required Evolution API environment variable ${v}`);
+  }
+}
 
 async function ensureDatabaseSchema() {
   await sequelize.query(`
@@ -162,6 +181,9 @@ async function ensureDatabaseSchema() {
       "doctor_id" INTEGER NOT NULL REFERENCES "Doctors"("user_id") ON UPDATE CASCADE ON DELETE CASCADE,
       "patient_id" INTEGER NOT NULL REFERENCES "Patients"("user_id") ON UPDATE CASCADE ON DELETE CASCADE,
       "status" VARCHAR(30) NOT NULL DEFAULT 'PENDING_VERIFICATION',
+      "otp_code" VARCHAR(10),
+      "otp_expires_at" TIMESTAMP WITH TIME ZONE,
+      "otp_used" BOOLEAN DEFAULT false,
       "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
       "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
       UNIQUE ("doctor_id", "patient_id")
@@ -173,12 +195,41 @@ async function ensureDatabaseSchema() {
       END IF;
     END $$;
 
+    -- Ensure OTP columns exist if table was already created
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Contacts' AND column_name = 'otp_code') THEN
+        ALTER TABLE "Contacts" ADD COLUMN "otp_code" VARCHAR(10);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Contacts' AND column_name = 'otp_expires_at') THEN
+        ALTER TABLE "Contacts" ADD COLUMN "otp_expires_at" TIMESTAMP WITH TIME ZONE;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Contacts' AND column_name = 'otp_used') THEN
+        ALTER TABLE "Contacts" ADD COLUMN "otp_used" BOOLEAN DEFAULT false;
+      END IF;
+    END $$;
+
+    -- Add language to Users
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'language') THEN
+        ALTER TABLE "Users" ADD COLUMN "language" VARCHAR(10) DEFAULT 'en';
+      END IF;
+    END $$;
+
     COMMIT;
   `);
 
   // eslint-disable-next-line no-console
   console.log("[DB] Relational database logic and administrative structure successfully verified/migrated.");
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception caught:', error);
+});
 
 async function start() {
   try {
@@ -197,14 +248,23 @@ async function start() {
     const bootstrap = require("./config/bootstrap");
     await bootstrap();
 
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`Backend running on :${port}`);
     });
+
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use.`);
+      } else {
+        console.error('❌ Server error:', error);
+      }
+      process.exit(1);
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error("Startup failed", error);
-    process.exit(1);
+    console.error("❌ [Database] Connection failed during bootstrap:", error);
+    // Allow fallback or log clearly instead of an untracked crash
   }
 }
 

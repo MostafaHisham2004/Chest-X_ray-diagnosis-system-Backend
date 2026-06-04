@@ -776,10 +776,29 @@ class _ContactsPane extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'No contacts available',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(color: txtSec),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            role == 'doctor'
+                                ? Icons.people_outline
+                                : Icons.medical_services_outlined,
+                            size: 48,
+                            color: txtSec.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            role == 'doctor'
+                                ? 'No patients connected yet.\nTap "Start New Patient Consultation" to begin.'
+                                : 'No conversations yet.\nWaiting for a doctor to connect with you.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.dmSans(
+                              color: txtSec,
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -822,7 +841,18 @@ class _ContactsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (contacts.isEmpty) {
-      return const Center(child: Text('No contacts available'));
+      final txtSec = Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.darkTextSecondary
+          : AppTheme.textSecondary;
+      return Center(
+        child: Text(
+          role == 'doctor'
+              ? 'No patients yet'
+              : 'No doctors yet — waiting for a connection',
+          style: GoogleFonts.dmSans(color: txtSec, fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+      );
     }
     return ListView.separated(
       scrollDirection: Axis.horizontal,

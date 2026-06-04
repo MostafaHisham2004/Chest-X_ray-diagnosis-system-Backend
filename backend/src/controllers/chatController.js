@@ -5,9 +5,17 @@ const { sendSuccess, sendError } = require("../utils/response");
 
 const activeStreams = new Map();
 
+/**
+ * Safely resolve user ID from JWT payload.
+ * Supports both { sub: id } and { id } JWT shapes.
+ */
+function getUserId(user) {
+  return user?.id ?? user?.sub ?? null;
+}
+
 async function getContacts(req, res, next) {
   try {
-    const userId = req.user.sub;
+    const userId = getUserId(req.user);
     const role = req.user.role;
 
     const contacts = [];
@@ -15,7 +23,13 @@ async function getContacts(req, res, next) {
     if (role === "PATIENT") {
       const dbContacts = await Contact.findAll({
         where: { patient_id: userId },
-        include: [{ model: Doctor, as: "doctor" }]
+        include: [
+          {
+            model: Doctor,
+            as: "doctor",
+            include: [{ model: User, as: "user" }]
+          }
+        ]
       });
 
       for (const contact of dbContacts) {
@@ -36,7 +50,13 @@ async function getContacts(req, res, next) {
     } else if (role === "DOCTOR") {
       const dbContacts = await Contact.findAll({
         where: { doctor_id: userId },
-        include: [{ model: Patient, as: "patient" }]
+        include: [
+          {
+            model: Patient,
+            as: "patient",
+            include: [{ model: User, as: "user" }]
+          }
+        ]
       });
 
       for (const contact of dbContacts) {
@@ -58,7 +78,9 @@ async function getContacts(req, res, next) {
 
     return sendSuccess(res, {
       statusCode: 200,
-      message: "Contacts retrieved successfully.",
+      message: contacts.length === 0
+        ? "No contacts found. Start a connection to add contacts."
+        : "Contacts retrieved successfully.",
       data: { contacts }
     });
   } catch (error) {
@@ -68,7 +90,7 @@ async function getContacts(req, res, next) {
 
 async function getThreads(req, res, next) {
   try {
-    const userId = req.user.sub;
+    const userId = getUserId(req.user);
     const role = req.user.role;
 
     const where = {};
@@ -87,8 +109,16 @@ async function getThreads(req, res, next) {
     const threads = await ChatThread.findAll({
       where,
       include: [
-        { model: Patient, as: "patient" },
-        { model: Doctor, as: "doctor" }
+        {
+          model: Patient,
+          as: "patient",
+          include: [{ model: User, as: "user" }]
+        },
+        {
+          model: Doctor,
+          as: "doctor",
+          include: [{ model: User, as: "user" }]
+        }
       ],
       order: [["updated_at", "DESC"]]
     });
@@ -156,7 +186,7 @@ async function getThreads(req, res, next) {
 
 async function requestConnection(req, res, next) {
   try {
-    const doctorId = req.user.sub;
+    const doctorId = getUserId(req.user);
     const { phone } = req.body;
 
     if (req.user.role !== "DOCTOR") {
@@ -176,20 +206,35 @@ async function requestConnection(req, res, next) {
       });
     }
 
+    // Find the patient by normalized phone
     const patientUser = await User.findOne({
       where: { phone: normalizedPhone, role: "PATIENT" }
     });
 
     if (!patientUser) {
-      return sendError(res, {
-        statusCode: 404,
-        message: "Patient with this phone number is not registered.",
-        code: "NOT_FOUND"
+      // Also try unnormalized in case it was stored differently
+      const patientUserRaw = await User.findOne({
+        where: { phone, role: "PATIENT" }
       });
+      if (!patientUserRaw) {
+        return sendError(res, {
+          statusCode: 404,
+          message: "Patient with this phone number is not registered.",
+          code: "NOT_FOUND"
+        });
+      }
     }
 
+    const patient = patientUser || await User.findOne({ where: { phone, role: "PATIENT" } });
+
+    // Fetch the Doctor record to get the doctor's name
+    const doctorProfile = await Doctor.findByPk(doctorId, {
+      include: [{ model: User, as: "user" }]
+    });
+    const doctorName = doctorProfile ? doctorProfile.name : "Your doctor";
+
     let contact = await Contact.findOne({
-      where: { doctor_id: doctorId, patient_id: patientUser.id }
+      where: { doctor_id: doctorId, patient_id: patient.id }
     });
 
     if (contact && contact.status === "ACTIVE") {
@@ -200,28 +245,54 @@ async function requestConnection(req, res, next) {
       });
     }
 
+    const crypto = require("crypto");
+    const code = String(crypto.randomInt(100000, 1000000));
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     if (!contact) {
       contact = await Contact.create({
         doctor_id: doctorId,
-        patient_id: patientUser.id,
+        patient_id: patient.id,
+        status: "PENDING_VERIFICATION",
+        otp_code: code,
+        otp_expires_at: otpExpiresAt,
+        otp_used: false
+      });
+    } else {
+      await contact.update({
+        otp_code: code,
+        otp_expires_at: otpExpiresAt,
+        otp_used: false,
         status: "PENDING_VERIFICATION"
       });
     }
 
-    await sendContactOtp(patientUser.phone, doctorId);
+    const lang = patient.language || "en";
+    let messageText;
+    if (lang === "ar") {
+      messageText = `MediScan AI: الدكتور ${doctorName} يريد التواصل معك. رمز التحقق: ${code}. صالح لمدة 10 دقائق.`;
+    } else {
+      messageText = `MediScan AI: Dr. ${doctorName} wants to connect with you. Verification code: ${code}. Valid for 10 minutes.`;
+    }
+
+    const { sendTextMessage } = require("../services/whatsappService");
+    await sendTextMessage(normalizedPhone, messageText);
 
     return sendSuccess(res, {
       statusCode: 200,
-      message: "Connection request initiated. Verification code sent to patient."
+      message: "OTP sent to patient"
     });
   } catch (error) {
+    if (error.name === "WhatsAppServiceError") {
+      return res.status(502).json({ success: false, message: "WhatsApp delivery failed — check Evolution API config" });
+    }
     return next(error);
   }
 }
 
 async function verifyConnection(req, res, next) {
   try {
-    const patientId = req.user.sub;
+    const patientId = getUserId(req.user);
     const { code } = req.body;
 
     if (req.user.role !== "PATIENT") {
@@ -275,7 +346,7 @@ async function verifyConnection(req, res, next) {
 
 async function createThread(req, res, next) {
   try {
-    const currentUserId = req.user.sub;
+    const currentUserId = getUserId(req.user);
     const currentUserRole = req.user.role;
     const { user_id } = req.body;
 
@@ -309,20 +380,17 @@ async function createThread(req, res, next) {
     let thread = await ChatThread.findOne({
       where: { doctor_id: doctorId, patient_id: patientId },
       include: [
-        { model: Patient, as: "patient" },
-        { model: Doctor, as: "doctor" }
+        { model: Patient, as: "patient", include: [{ model: User, as: "user" }] },
+        { model: Doctor, as: "doctor", include: [{ model: User, as: "user" }] }
       ]
     });
 
     if (!thread) {
-      thread = await ChatThread.create({
-        doctor_id: doctorId,
-        patient_id: patientId
-      });
+      thread = await ChatThread.create({ doctor_id: doctorId, patient_id: patientId });
       thread = await ChatThread.findByPk(thread.id, {
         include: [
-          { model: Patient, as: "patient" },
-          { model: Doctor, as: "doctor" }
+          { model: Patient, as: "patient", include: [{ model: User, as: "user" }] },
+          { model: Doctor, as: "doctor", include: [{ model: User, as: "user" }] }
         ]
       });
     }
@@ -367,24 +435,16 @@ async function createThread(req, res, next) {
 
 async function getMessages(req, res, next) {
   try {
-    const userId = req.user.sub;
+    const userId = getUserId(req.user);
     const threadId = Number(req.params.threadId);
 
     const thread = await ChatThread.findByPk(threadId);
     if (!thread) {
-      return sendError(res, {
-        statusCode: 404,
-        message: "Thread not found.",
-        code: "NOT_FOUND"
-      });
+      return sendError(res, { statusCode: 404, message: "Thread not found.", code: "NOT_FOUND" });
     }
 
     if (thread.patient_id !== userId && thread.doctor_id !== userId) {
-      return sendError(res, {
-        statusCode: 403,
-        message: "You are not a participant in this thread.",
-        code: "FORBIDDEN"
-      });
+      return sendError(res, { statusCode: 403, message: "You are not a participant in this thread.", code: "FORBIDDEN" });
     }
 
     const contact = await Contact.findOne({
@@ -392,11 +452,7 @@ async function getMessages(req, res, next) {
     });
 
     if (!contact || contact.status !== "ACTIVE") {
-      return sendError(res, {
-        statusCode: 403,
-        message: "Active connection is required to retrieve messages.",
-        code: "FORBIDDEN"
-      });
+      return sendError(res, { statusCode: 403, message: "Active connection is required to retrieve messages.", code: "FORBIDDEN" });
     }
 
     const messages = await ChatMessage.findAll({
@@ -424,33 +480,21 @@ async function getMessages(req, res, next) {
 
 async function sendMessage(req, res, next) {
   try {
-    const userId = req.user.sub;
+    const userId = getUserId(req.user);
     const threadId = Number(req.params.threadId);
     const { body } = req.body;
 
     if (!body || !String(body).trim()) {
-      return sendError(res, {
-        statusCode: 400,
-        message: "Message body cannot be empty.",
-        code: "VALIDATION_ERROR"
-      });
+      return sendError(res, { statusCode: 400, message: "Message body cannot be empty.", code: "VALIDATION_ERROR" });
     }
 
     const thread = await ChatThread.findByPk(threadId);
     if (!thread) {
-      return sendError(res, {
-        statusCode: 404,
-        message: "Thread not found.",
-        code: "NOT_FOUND"
-      });
+      return sendError(res, { statusCode: 404, message: "Thread not found.", code: "NOT_FOUND" });
     }
 
     if (thread.patient_id !== userId && thread.doctor_id !== userId) {
-      return sendError(res, {
-        statusCode: 403,
-        message: "You are not a participant in this thread.",
-        code: "FORBIDDEN"
-      });
+      return sendError(res, { statusCode: 403, message: "You are not a participant in this thread.", code: "FORBIDDEN" });
     }
 
     const contact = await Contact.findOne({
@@ -458,11 +502,7 @@ async function sendMessage(req, res, next) {
     });
 
     if (!contact || contact.status !== "ACTIVE") {
-      return sendError(res, {
-        statusCode: 403,
-        message: "Active connection is required to send messages.",
-        code: "FORBIDDEN"
-      });
+      return sendError(res, { statusCode: 403, message: "Active connection is required to send messages.", code: "FORBIDDEN" });
     }
 
     const message = await ChatMessage.create({
@@ -506,13 +546,11 @@ async function sendMessage(req, res, next) {
 
 async function streamMessages(req, res, next) {
   try {
-    const userId = req.user.sub;
+    const userId = getUserId(req.user);
     const threadId = Number(req.params.threadId);
 
     const thread = await ChatThread.findByPk(threadId);
-    if (!thread) {
-      return res.status(404).end();
-    }
+    if (!thread) return res.status(404).end();
 
     if (thread.patient_id !== userId && thread.doctor_id !== userId) {
       return res.status(403).end();
@@ -522,9 +560,7 @@ async function streamMessages(req, res, next) {
       where: { doctor_id: thread.doctor_id, patient_id: thread.patient_id }
     });
 
-    if (!contact || contact.status !== "ACTIVE") {
-      return res.status(403).end();
-    }
+    if (!contact || contact.status !== "ACTIVE") return res.status(403).end();
 
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -542,9 +578,7 @@ async function streamMessages(req, res, next) {
       const clients = activeStreams.get(threadId);
       if (clients) {
         clients.delete(res);
-        if (clients.size === 0) {
-          activeStreams.delete(threadId);
-        }
+        if (clients.size === 0) activeStreams.delete(threadId);
       }
     });
   } catch (error) {

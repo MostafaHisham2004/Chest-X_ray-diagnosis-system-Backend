@@ -32,6 +32,7 @@ model User {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   is_verified Boolean       @default(false)
+  language    String        @default("en")
   messages    ChatMessage[]
 
   // One-to-One Relationships
@@ -71,6 +72,9 @@ model Contact {
   doctorId  String        @map("doctor_id")
   patientId String        @map("patient_id")
   status    ContactStatus @default(PENDING_VERIFICATION)
+  otpCode   String?       @map("otp_code")
+  otpExpiresAt DateTime?  @map("otp_expires_at")
+  otpUsed   Boolean?      @default(false) @map("otp_used")
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
 

@@ -1,19 +1,30 @@
 const crypto = require("crypto");
-const { User, Doctor, Patient } = require("../models");
+const { User, Contact } = require("../models");
 const { sendTextMessage, normalizePhoneNumber } = require("./whatsappService");
 
 const otpStore = new Map();
-const OTP_TTL_MS = 24 * 60 * 60 * 1000;
+const OTP_TTL_MS = 24 * 60 * 60 * 1000;            // 24h for phone-verification OTPs
+const CONTACT_OTP_TTL_MS = 10 * 60 * 1000;          // 10min for doctor-patient contact OTPs
 
 function generateOtp() {
   return String(crypto.randomInt(100000, 1000000));
 }
 
-function buildOtpMessage(code) {
+function buildOtpMessage(code, language = "en") {
+  if (language === "ar") {
+    return `رمز التحقق الخاص بك في MediScan AI هو: ${code}. ينتهي صلاحية هذا الرمز خلال 24 ساعة.`;
+  }
   return `MediScan AI verification code: ${code}. This code expires in 24 hours.`;
 }
 
-async function sendOtp(phone) {
+function buildContactOtpMessage(code, doctorName, language = "en") {
+  if (language === "ar") {
+    return `MediScan AI: الدكتور ${doctorName} يريد التواصل معك. استخدم رمز التحقق ${code} للموافقة. صالح لمدة 10 دقائق.`;
+  }
+  return `MediScan AI: Dr. ${doctorName} wants to connect with you. Use verification code ${code} to authorize. Valid for 10 minutes.`;
+}
+
+async function sendOtp(phone, language = "en") {
   const normalizedPhone = normalizePhoneNumber(phone);
   if (!normalizedPhone) {
     const err = new Error("Valid phone number is required");
@@ -33,7 +44,7 @@ async function sendOtp(phone) {
   });
 
   try {
-    await sendTextMessage(normalizedPhone, buildOtpMessage(code));
+    await sendTextMessage(normalizedPhone, buildOtpMessage(code, language));
   } catch (error) {
     otpStore.delete(normalizedPhone);
     throw error;
@@ -79,7 +90,15 @@ async function markPhoneVerified(phone) {
   );
 }
 
-async function sendContactOtp(phone, doctorId) {
+/**
+ * Sends an OTP to a patient for a doctor-patient connection request.
+ *
+ * @param {string} phone - Patient's phone number
+ * @param {number} doctorId - Doctor's user_id (used as key in otpStore)
+ * @param {string} doctorName - Doctor's display name (passed from controller)
+ * @param {string} language - Patient's preferred language ('en' | 'ar')
+ */
+async function sendContactOtp(phone, doctorId, doctorName = "A doctor", language = "en") {
   const normalizedPhone = normalizePhoneNumber(phone);
   if (!normalizedPhone) {
     const err = new Error("Valid phone number is required");
@@ -90,17 +109,14 @@ async function sendContactOtp(phone, doctorId) {
 
   const code = generateOtp();
   const createdAt = Date.now();
-
-  const doctor = await Doctor.findByPk(doctorId);
-  const doctorName = doctor ? doctor.name : "A doctor";
-  const message = `MediScan AI: Dr. ${doctorName} wants to connect with you. Use verification code ${code} to authorize. Valid for 24 hours.`;
+  const message = buildContactOtpMessage(code, doctorName, language);
 
   otpStore.set(normalizedPhone, {
     code,
     phone: normalizedPhone,
     doctorId,
     createdAt,
-    expiresAt: createdAt + OTP_TTL_MS,
+    expiresAt: createdAt + CONTACT_OTP_TTL_MS,
     attempts: 0
   });
 
@@ -113,7 +129,7 @@ async function sendContactOtp(phone, doctorId) {
 
   return {
     phone: normalizedPhone,
-    expires_in_seconds: Math.floor(OTP_TTL_MS / 1000)
+    expires_in_seconds: Math.floor(CONTACT_OTP_TTL_MS / 1000)
   };
 }
 
@@ -122,7 +138,7 @@ async function verifyContactOtp(phone, code) {
   const record = otpStore.get(normalizedPhone);
   const tokenAgeMs = record ? Date.now() - record.createdAt : Infinity;
 
-  if (!record || tokenAgeMs > OTP_TTL_MS) {
+  if (!record || tokenAgeMs > CONTACT_OTP_TTL_MS) {
     otpStore.delete(normalizedPhone);
     const err = new Error("Verification code has expired or is invalid");
     err.statusCode = 400;

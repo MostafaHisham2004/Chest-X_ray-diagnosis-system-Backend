@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +35,8 @@ class AdminDashboardView extends StatefulWidget {
 class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTickerProviderStateMixin {
   final _service = AdminService();
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
 
   List<ManagedUser> _pendingDoctors = [];
   List<ManagedUser> _allUsers = [];
@@ -55,6 +58,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
   void dispose() {
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -62,6 +67,17 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
     if (_tabController.index == 1 && _allUsers.isEmpty) {
       _loadAllUsers();
     }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_tabController.index == 0) {
+        _loadPendingDoctors();
+      } else {
+        _loadAllUsers();
+      }
+    });
   }
 
   Future<void> _loadPendingDoctors() async {
@@ -74,7 +90,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
     });
 
     try {
-      final list = await _service.fetchPendingDoctors(token);
+      final query = _searchController.text;
+      final list = await _service.fetchPendingDoctors(token, search: query);
       if (!mounted) return;
       setState(() {
         _pendingDoctors = list;
@@ -105,7 +122,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
     });
 
     try {
-      final list = await _service.fetchAllUsers(token);
+      final query = _searchController.text;
+      final list = await _service.fetchAllUsers(token, search: query);
       if (!mounted) return;
       setState(() {
         _allUsers = list;
@@ -308,6 +326,34 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                 ),
               ),
               const SizedBox(height: 20),
+              // Search Bar
+              TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search by name or email...',
+                  hintStyle: GoogleFonts.dmSans(color: txtSec),
+                  prefixIcon: const Icon(Icons.search_outlined),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: GoogleFonts.dmSans(),
+              ),
+              const SizedBox(height: 16),
               // Custom Sliding Segmented Tab Controller
               Container(
                 height: 48,

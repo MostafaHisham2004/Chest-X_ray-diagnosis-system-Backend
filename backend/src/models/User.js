@@ -40,6 +40,11 @@ module.exports = (sequelize) =>
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: "pending"
+      },
+      language: {
+        type: DataTypes.STRING(10),
+        allowNull: false,
+        defaultValue: "en"
       }
     },
     {

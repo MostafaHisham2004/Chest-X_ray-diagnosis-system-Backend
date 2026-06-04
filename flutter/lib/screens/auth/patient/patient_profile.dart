@@ -7,6 +7,7 @@ import '../../../services/api_client.dart';
 import '../../../services/xray_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/language_provider.dart';
 import '../../../widgets/admin_badge.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../../../widgets/theme_switcher.dart';
@@ -322,6 +323,8 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               description: 'Choose your preferred theme',
               child: const ThemeSwitcher(),
             ),
+            const SizedBox(height: 16),
+            const _LanguageSelectorCard(),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -699,4 +702,108 @@ class _Badge extends StatelessWidget {
             style: GoogleFonts.dmSans(
                 fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
       );
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Language Selector Card
+// ──────────────────────────────────────────────────────────────────
+
+class _LanguageSelectorCard extends StatelessWidget {
+  const _LanguageSelectorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+
+    return SectionCard(
+      title: 'Language',
+      description: 'Choose your preferred language',
+      child: Row(
+        children: [
+          Expanded(
+            child: _LangOption(
+              flag: '🇬🇧',
+              label: 'English',
+              isActive: lang.languageCode == 'en',
+              onTap: () => lang.updateLanguage('en'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _LangOption(
+              flag: '🇸🇦',
+              label: 'العربية',
+              isActive: lang.languageCode == 'ar',
+              onTap: () => lang.updateLanguage('ar'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LangOption extends StatelessWidget {
+  final String flag;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _LangOption({
+    required this.flag,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppTheme.primary.withOpacity(isDark ? 0.2 : 0.1)
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? AppTheme.primary
+                : (isDark ? AppTheme.darkBorderColor : AppTheme.borderColor),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive
+                    ? AppTheme.primary
+                    : theme.textTheme.bodyLarge?.color,
+              ),
+            ),
+            if (isActive) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.check_circle,
+                  size: 16, color: AppTheme.primary),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

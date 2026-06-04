@@ -86,19 +86,27 @@ class AdminService {
     );
   }
 
-  Future<List<ManagedUser>> fetchPendingDoctors(String token) async {
-    final body = await _api.get('/api/admin/doctors?status=PENDING', token: token);
-    final data = body['data'] as List? ?? const [];
-    return data
+  Future<List<ManagedUser>> fetchPendingDoctors(String token, {String? search}) async {
+    final query = search != null && search.trim().isNotEmpty 
+        ? '?status=PENDING&q=${Uri.encodeQueryComponent(search.trim())}' 
+        : '?status=PENDING';
+    final body = await _api.get('/api/admin/doctors$query', token: token);
+    final data = body['data'] as Map<String, dynamic>? ?? {};
+    final users = data['users'] as List? ?? const [];
+    return users
         .whereType<Map<String, dynamic>>()
         .map(ManagedUser.fromJson)
         .toList();
   }
 
-  Future<List<ManagedUser>> fetchAllUsers(String token) async {
-    final body = await _api.get('/api/admin/doctors', token: token);
-    final data = body['data'] as List? ?? const [];
-    return data
+  Future<List<ManagedUser>> fetchAllUsers(String token, {String? search}) async {
+    final query = search != null && search.trim().isNotEmpty 
+        ? '?q=${Uri.encodeQueryComponent(search.trim())}' 
+        : '';
+    final body = await _api.get('/api/admin/doctors$query', token: token);
+    final data = body['data'] as Map<String, dynamic>? ?? {};
+    final users = data['users'] as List? ?? const [];
+    return users
         .whereType<Map<String, dynamic>>()
         .map(ManagedUser.fromJson)
         .toList();

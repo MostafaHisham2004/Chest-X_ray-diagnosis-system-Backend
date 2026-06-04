@@ -7,6 +7,28 @@ import '../config/api_config.dart';
 import '../models/chat_models.dart';
 import 'api_client.dart';
 
+/// Model for a pending OTP connection request sent to this patient by a doctor.
+class PendingConnection {
+  final int doctorId;
+  final String doctorName;
+  final DateTime expiresAt;
+
+  const PendingConnection({
+    required this.doctorId,
+    required this.doctorName,
+    required this.expiresAt,
+  });
+
+  factory PendingConnection.fromJson(Map<String, dynamic> json) {
+    return PendingConnection(
+      doctorId: _readInt(json['doctorId']),
+      doctorName: json['doctorName'] as String? ?? 'Your doctor',
+      expiresAt: DateTime.tryParse(json['expiresAt'] as String? ?? '') ??
+          DateTime.now().add(const Duration(minutes: 10)),
+    );
+  }
+}
+
 class ChatService {
   final ApiClient _api;
   final http.Client _streamClient;
@@ -35,6 +57,21 @@ class ChatService {
         .toList();
   }
 
+  /// Used during new patient registration to link with a doctor via a code.
+  Future<void> verifyConnection({
+    required String token,
+    required String code,
+  }) async {
+    await _api.post(
+      '/api/chat/connections/verify',
+      token: token,
+      body: {'code': code},
+    );
+  }
+
+  /// Doctor calls this to send a WhatsApp OTP to a patient by phone number.
+  /// On success the backend sends the OTP and returns 200; no code is returned
+  /// to the doctor's UI.
   Future<void> sendConnectionRequest({
     required String token,
     required String phone,
@@ -46,15 +83,34 @@ class ChatService {
     );
   }
 
-  Future<void> verifyConnection({
+  /// Patient calls this to check if a doctor has sent a pending OTP.
+  /// Returns null if no pending connection exists.
+  Future<PendingConnection?> fetchPendingConnection(String token) async {
+    try {
+      final body = await _api.get('/api/otp/pending', token: token);
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      final pending = data['pending'];
+      if (pending == null) return null;
+      return PendingConnection.fromJson(pending as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Patient submits the OTP to confirm the doctor-patient connection.
+  /// Returns the chatThreadId so the UI can navigate directly into Chat.
+  Future<int> verifyPendingConnection({
     required String token,
-    required String code,
+    required String otp,
+    required int doctorId,
   }) async {
-    await _api.post(
-      '/api/chat/connections/verify',
+    final body = await _api.post(
+      '/api/otp/verify',
       token: token,
-      body: {'code': code},
+      body: {'otp': otp, 'doctorId': doctorId},
     );
+    final data = body['data'] as Map<String, dynamic>? ?? {};
+    return _readInt(data['chatThreadId']);
   }
 
   Future<Map<String, dynamic>> sendOtp({
@@ -69,12 +125,13 @@ class ChatService {
     return body;
   }
 
+  /// Phone-number verification (used by OtpVerificationScreen only).
   Future<void> verifyOtp({
     required String phone,
     required String code,
   }) async {
     await _api.post(
-      '/api/otp/verify',
+      '/api/otp/verify-phone',
       body: {'phone': phone, 'code': code},
     );
   }
@@ -165,4 +222,11 @@ class ChatService {
       }
     }
   }
+}
+
+int _readInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
 }

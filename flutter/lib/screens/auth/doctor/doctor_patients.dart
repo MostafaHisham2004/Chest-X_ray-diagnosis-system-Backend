@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../models/chat_models.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_client.dart';
 import '../../../services/chat_service.dart';
@@ -16,47 +19,78 @@ class DoctorPatientsScreen extends StatefulWidget {
   State<DoctorPatientsScreen> createState() => _DoctorPatientsScreenState();
 }
 
-class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
+class _DoctorPatientsScreenState extends State<DoctorPatientsScreen>
+    with WidgetsBindingObserver {
   final _service = XrayService();
   final _chatService = ChatService();
   List<Map<String, dynamic>> _patients = [];
+  List<ChatContact> _chatContacts = [];
   bool _isLoading = true;
   String? _error;
   String _search = '';
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    // Auto-refresh every 30 seconds to show status chip updates
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _load(silent: true);
+    });
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load(silent: true);
+    }
+  }
+
+  Future<void> _load({bool silent = false}) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final patients = await _service.fetchDoctorPatients(token);
+      final chatContacts = await _chatService.fetchContacts(token);
       if (!mounted) return;
       setState(() {
         _patients = patients;
+        _chatContacts = chatContacts;
         _isLoading = false;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _isLoading = false;
-      });
+      if (!silent) setState(() { _error = e.message; _isLoading = false; });
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Unable to load patients.';
-        _isLoading = false;
-      });
+      if (!silent) setState(() { _error = 'Unable to load patients.'; _isLoading = false; });
     }
+  }
+
+  /// Looks up the connection status for a patient from the contacts list.
+  String _connectionStatus(Map<String, dynamic> patient) {
+    final patientEmail = patient['email'] as String? ?? '';
+    for (final c in _chatContacts) {
+      if (c.email == patientEmail) {
+        return c.verificationStatus ?? 'PENDING_VERIFICATION';
+      }
+    }
+    return 'NOT_CONNECTED';
   }
 
   List<Map<String, dynamic>> get _filtered => _patients.where((p) {
@@ -68,18 +102,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
       }).toList();
 
   Future<void> _showAddPatientDialog() async {
-    final success = await showDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
-      builder: (_) => _AddPatientDialog(
-        chatService: _chatService,
-      ),
+      builder: (_) => _AddPatientDialog(chatService: _chatService),
     );
-    if (success == true && mounted) {
+    if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Patient phone verified successfully.'),
+          content: Text(
+            'WhatsApp verification code sent to patient. '
+            'Connection will appear as "Pending" until they confirm.',
+          ),
+          duration: Duration(seconds: 5),
         ),
       );
+      await _load(silent: true);
     }
   }
 
@@ -101,8 +138,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline,
-                    size: 48, color: AppTheme.warning),
+                const Icon(Icons.lock_outline, size: 48, color: AppTheme.warning),
                 const SizedBox(height: 16),
                 Text('Account Pending Approval',
                     style: GoogleFonts.dmSans(
@@ -123,15 +159,6 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
           ),
         ),
       );
-    }
-
-    Border cardBorder = Border.all(
-      color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor,
-      width: 1.18,
-    );
-    final shape = theme.cardTheme.shape;
-    if (shape is RoundedRectangleBorder) {
-      cardBorder = Border.fromBorderSide(shape.side);
     }
 
     final filtered = _filtered;
@@ -173,6 +200,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     onPressed: _load,
+                    tooltip: 'Refresh',
                   ),
                 ],
               ),
@@ -183,11 +211,10 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _showAddPatientDialog,
                   icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Add Patient'),
+                  label: const Text('Add Patient via WhatsApp'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -202,55 +229,52 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                   decoration: BoxDecoration(
                     color: theme.cardTheme.color,
                     borderRadius: BorderRadius.circular(16),
-                    border: cardBorder,
+                    border: Border.all(
+                      color: isDark
+                          ? AppTheme.darkBorderColor
+                          : AppTheme.borderColor,
+                      width: 1.18,
+                    ),
                   ),
                   child: Column(
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('All Patients',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: theme
-                                                .textTheme.titleLarge?.color,
-                                          )),
-                                      Text(
-                                          '${filtered.length} patient${filtered.length == 1 ? '' : 's'}',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 12,
-                                            color: isDark
-                                                ? AppTheme.darkTextSecondary
-                                                : AppTheme.textSecondary,
-                                          )),
-                                    ],
-                                  ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('All Patients',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: theme.textTheme.titleLarge?.color,
+                                      )),
+                                  Text(
+                                      '${filtered.length} patient${filtered.length == 1 ? '' : 's'}',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? AppTheme.darkTextSecondary
+                                            : AppTheme.textSecondary,
+                                      )),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 180,
+                              child: TextField(
+                                onChanged: (v) => setState(() => _search = v),
+                                style: GoogleFonts.dmSans(fontSize: 13),
+                                decoration: const InputDecoration(
+                                  hintText: 'Search patients...',
+                                  prefixIcon: Icon(Icons.search, size: 18),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
                                 ),
-                                SizedBox(
-                                  width: 180,
-                                  child: TextField(
-                                    onChanged: (v) =>
-                                        setState(() => _search = v),
-                                    style: GoogleFonts.dmSans(fontSize: 13),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Search patients...',
-                                      prefixIcon: Icon(Icons.search, size: 18),
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 10),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
@@ -263,22 +287,24 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         color: isDark
                             ? AppTheme.darkBackground
                             : AppTheme.background,
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const _TableHeader('Name', flex: 2),
-                            const _TableHeader('Diagnosis', flex: 2),
-                            const _TableHeader('Date', flex: 2),
-                            const _TableHeader('Status', flex: 2),
-                            const _TableHeader('', flex: 1),
+                            _TableHeader('Name', flex: 2),
+                            _TableHeader('Diagnosis', flex: 2),
+                            _TableHeader('Date', flex: 2),
+                            _TableHeader('Diagnosis Status', flex: 2),
+                            _TableHeader('Connection', flex: 2),
+                            _TableHeader('', flex: 1),
                           ],
                         ),
                       ),
                       const Divider(height: 1),
-                      // Patients list
+                      // Patient rows
                       ...filtered.map((patient) => Column(
                             children: [
                               _PatientRow(
                                 patient: patient,
+                                connectionStatus: _connectionStatus(patient),
                                 onView: () =>
                                     _showPatientDetail(context, patient),
                               ),
@@ -289,11 +315,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         Padding(
                           padding: const EdgeInsets.all(32),
                           child: Center(
-                            child: Text('No patients found',
-                                style: GoogleFonts.dmSans(
+                            child: Column(
+                              children: [
+                                Icon(Icons.people_outline,
+                                    size: 40,
                                     color: isDark
                                         ? AppTheme.darkTextSecondary
-                                        : AppTheme.textSecondary)),
+                                        : AppTheme.textSecondary),
+                                const SizedBox(height: 8),
+                                Text('No patients found',
+                                    style: GoogleFonts.dmSans(
+                                        color: isDark
+                                            ? AppTheme.darkTextSecondary
+                                            : AppTheme.textSecondary)),
+                              ],
+                            ),
                           ),
                         ),
                     ],
@@ -423,6 +459,66 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Connection Status Chip
+// ──────────────────────────────────────────────────────────────────
+
+class _ConnectionChip extends StatelessWidget {
+  final String status;
+  const _ConnectionChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = status == 'ACTIVE';
+    final isPending = status == 'PENDING_VERIFICATION';
+    final color = isActive
+        ? const Color(0xFF22C55E)  // green
+        : isPending
+            ? const Color(0xFFF59E0B)  // amber
+            : AppTheme.textSecondary;
+    final label = isActive
+        ? 'Connected'
+        : isPending
+            ? 'Pending'
+            : 'Not Connected';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Table widgets
+// ──────────────────────────────────────────────────────────────────
+
 class _TableHeader extends StatelessWidget {
   final String text;
   final int flex;
@@ -446,9 +542,14 @@ class _TableHeader extends StatelessWidget {
 
 class _PatientRow extends StatelessWidget {
   final Map<String, dynamic> patient;
+  final String connectionStatus;
   final VoidCallback onView;
 
-  const _PatientRow({required this.patient, required this.onView});
+  const _PatientRow({
+    required this.patient,
+    required this.connectionStatus,
+    required this.onView,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -488,8 +589,11 @@ class _PatientRow extends StatelessWidget {
                           : AppTheme.textSecondary))),
           Expanded(
               flex: 2,
-              child:
-                  DiagnosisBadge(label: status, type: diagnosisToType(status))),
+              child: DiagnosisBadge(label: status, type: diagnosisToType(status))),
+          // Connection status chip (NEW)
+          Expanded(
+              flex: 2,
+              child: _ConnectionChip(status: connectionStatus)),
           Expanded(
             flex: 1,
             child: TextButton(
@@ -595,77 +699,41 @@ class _HistoryItem extends StatelessWidget {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────
+// _AddPatientDialog — SINGLE STEP (doctor sends code only; no OTP entry)
+// ──────────────────────────────────────────────────────────────────
+
 class _AddPatientDialog extends StatefulWidget {
   final ChatService chatService;
-
   const _AddPatientDialog({required this.chatService});
 
   @override
   State<_AddPatientDialog> createState() => _AddPatientDialogState();
 }
 
-enum _OtpStep { phone, code }
-
 class _AddPatientDialogState extends State<_AddPatientDialog> {
   final _phoneCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
-  _OtpStep _step = _OtpStep.phone;
   bool _loading = false;
-  String? _verifiedPhone;
 
   @override
   void dispose() {
     _phoneCtrl.dispose();
-    _codeCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
+  Future<void> _sendCode() async {
     final token = context.read<AuthProvider>().token;
     final phone = _phoneCtrl.text.trim();
     if (token == null || phone.isEmpty) return;
 
     setState(() => _loading = true);
     try {
-      await widget.chatService.sendOtp(token: token, phone: phone);
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _step = _OtpStep.code;
-        _verifiedPhone = phone;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
-      setState(() => _loading = false);
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not send OTP.')),
+      // Doctor sends the request. Backend sends WhatsApp OTP to patient.
+      // The doctor does NOT enter or see the OTP — the patient will.
+      await widget.chatService.sendConnectionRequest(
+        token: token,
+        phone: phone,
       );
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    final code = _codeCtrl.text.trim();
-    final phone = _verifiedPhone;
-    if (phone == null || code.length != 6) return;
-
-    setState(() => _loading = true);
-    try {
-      await widget.chatService.verifyOtp(phone: phone, code: code);
-      if (!mounted) return;
-
-      final token = context.read<AuthProvider>().token;
-      if (token != null) {
-        await widget.chatService.sendConnectionRequest(
-          token: token,
-          phone: phone,
-        );
-      }
-
       if (!mounted) return;
       Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -676,7 +744,7 @@ class _AddPatientDialogState extends State<_AddPatientDialog> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification failed.')),
+        const SnackBar(content: Text('Could not send code. Check phone number and try again.')),
       );
       setState(() => _loading = false);
     }
@@ -685,75 +753,46 @@ class _AddPatientDialogState extends State<_AddPatientDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_step == _OtpStep.phone ? 'Add Patient' : 'Verify Code'),
-      content: _step == _OtpStep.phone
-          ? TextField(
-              controller: _phoneCtrl,
-              keyboardType: TextInputType.phone,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Patient Phone Number',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'A 6-digit code was sent via WhatsApp to\n$_verifiedPhone',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _codeCtrl,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  autofocus: true,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, letterSpacing: 8),
-                  decoration: const InputDecoration(
-                    labelText: 'Verification Code',
-                    counterText: '',
-                  ),
-                ),
-              ],
+      title: Text('Add Patient via WhatsApp',
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w800)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Enter the patient\'s phone number. They will receive a WhatsApp verification code to confirm the connection.',
+            style: GoogleFonts.dmSans(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            autofocus: true,
+            textDirection: TextDirection.ltr, // phone numbers always LTR
+            decoration: const InputDecoration(
+              labelText: 'Patient Phone Number',
+              hintText: '+201xxxxxxxxx',
+              prefixIcon: Icon(Icons.phone_outlined),
             ),
+          ),
+        ],
+      ),
       actions: [
         TextButton(
-          onPressed: _loading
-              ? null
-              : () {
-                  if (_step == _OtpStep.code) {
-                    setState(() {
-                      _step = _OtpStep.phone;
-                      _verifiedPhone = null;
-                    });
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-          child: Text(_step == _OtpStep.code ? 'Back' : 'Cancel'),
+          onPressed: _loading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
         ),
         ElevatedButton.icon(
-          onPressed: _loading
-              ? null
-              : _step == _OtpStep.phone ? _sendOtp : _verifyOtp,
+          onPressed: _loading ? null : _sendCode,
           icon: _loading
               ? const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
+                      strokeWidth: 2, color: Colors.white),
                 )
-              : Icon(_step == _OtpStep.phone
-                  ? Icons.send_outlined
-                  : Icons.check_circle_outline),
-          label: Text(_step == _OtpStep.phone
-              ? 'Send Code via WhatsApp'
-              : 'Verify Code'),
+              : const Icon(Icons.send_outlined),
+          label: Text(_loading ? 'Sending...' : 'Send Code via WhatsApp'),
         ),
       ],
     );
