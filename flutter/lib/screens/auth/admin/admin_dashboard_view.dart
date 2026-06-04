@@ -32,7 +32,8 @@ class AdminDashboardView extends StatefulWidget {
   State<AdminDashboardView> createState() => _AdminDashboardViewState();
 }
 
-class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTickerProviderStateMixin {
+class _AdminDashboardViewState extends State<AdminDashboardView>
+    with SingleTickerProviderStateMixin {
   final _service = AdminService();
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -345,7 +346,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                       : null,
                   filled: true,
                   fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -359,10 +361,14 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                 height: 48,
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
+                  color: isDark
+                      ? const Color(0xFF1E1E1E)
+                      : const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE2E2E2),
+                    color: isDark
+                        ? const Color(0xFF2E2E2E)
+                        : const Color(0xFFE2E2E2),
                   ),
                 ),
                 child: TabBar(
@@ -380,7 +386,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                   ),
                   labelColor: AppTheme.primary,
                   unselectedLabelColor: txtSec,
-                  labelStyle: GoogleFonts.dmSans(fontWeight: FontWeight.bold, fontSize: 13),
+                  labelStyle: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.bold, fontSize: 13),
                   tabs: const [
                     Tab(text: 'Pending Doctors'),
                     Tab(text: 'Active System Users'),
@@ -411,7 +418,9 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
     }
     if (_errorPending != null) {
       return Center(
-        child: Text(_errorPending!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.bold)),
+        child: Text(_errorPending!,
+            style: GoogleFonts.dmSans(
+                color: AppTheme.error, fontWeight: FontWeight.bold)),
       );
     }
     if (_pendingDoctors.isEmpty) {
@@ -433,7 +442,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE2E2E2),
+                color:
+                    isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE2E2E2),
               ),
             ),
             child: Padding(
@@ -480,20 +490,31 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _infoField('Specialization', doc.specialization ?? 'Radiology', txtSec),
-                  _infoField('Medical Certificate Details', doc.medicalCertificate ?? 'Verification Details pending', txtSec),
+                  _infoField('Specialization',
+                      doc.specialization ?? 'Radiology', txtSec),
+                  _infoField(
+                      'Medical Certificate Details',
+                      doc.medicalCertificate ?? 'Verification Details pending',
+                      txtSec),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: _processingIds.contains(doc.id) ? null : () => _rejectDoctor(doc),
+                        onPressed: _processingIds.contains(doc.id)
+                            ? null
+                            : () => _rejectDoctor(doc),
                         icon: _processingIds.contains(doc.id)
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.close_outlined, size: 16),
                         label: Text(
                           'Reject',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.error,
@@ -505,13 +526,23 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
-                        onPressed: _processingIds.contains(doc.id) ? null : () => _approveDoctor(doc),
+                        onPressed: _processingIds.contains(doc.id)
+                            ? null
+                            : () => _approveDoctor(doc),
                         icon: _processingIds.contains(doc.id)
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.check_circle_outline_outlined, size: 16),
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.check_circle_outline_outlined,
+                                size: 16),
                         label: Text(
                           'Approve',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                          style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4CAF50),
@@ -537,7 +568,9 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
     }
     if (_errorAll != null) {
       return Center(
-        child: Text(_errorAll!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.bold)),
+        child: Text(_errorAll!,
+            style: GoogleFonts.dmSans(
+                color: AppTheme.error, fontWeight: FontWeight.bold)),
       );
     }
     if (_allUsers.isEmpty) {
@@ -565,11 +598,13 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE2E2E2),
+                color:
+                    isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE2E2E2),
               ),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               leading: CircleAvatar(
                 radius: 20,
                 backgroundColor: roleColor.withOpacity(0.12),
@@ -587,14 +622,16 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                   Expanded(
                     child: Text(
                       u.name.isEmpty ? 'System User' : u.name,
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 14),
+                      style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w800, fontSize: 14),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: roleColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -633,15 +670,22 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
                             : const Color(0xFFFF9800),
                     size: 20,
                   ),
-                  if (u.role.toUpperCase() != 'ADMIN' && u.verificationStatus?.toLowerCase() != 'suspended') ...[
+                  if (u.role.toUpperCase() != 'ADMIN' &&
+                      u.verificationStatus?.toLowerCase() != 'suspended') ...[
                     const SizedBox(width: 12),
                     IconButton(
                       icon: _processingIds.contains(u.id)
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.do_not_disturb_alt_outlined, size: 20),
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.do_not_disturb_alt_outlined,
+                              size: 20),
                       color: AppTheme.error,
                       tooltip: 'Suspend User',
-                      onPressed: _processingIds.contains(u.id) ? null : () => _suspendUser(u),
+                      onPressed: _processingIds.contains(u.id)
+                          ? null
+                          : () => _suspendUser(u),
                     ),
                   ],
                 ],
@@ -694,12 +738,17 @@ class _AdminDashboardViewState extends State<AdminDashboardView> with SingleTick
         children: [
           Text(
             label.toUpperCase(),
-            style: GoogleFonts.dmSans(fontSize: 9, color: txtSec, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            style: GoogleFonts.dmSans(
+                fontSize: 9,
+                color: txtSec,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500),
+            style:
+                GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500),
           ),
         ],
       ),

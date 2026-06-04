@@ -118,7 +118,8 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
     final auth = context.watch<AuthProvider>();
-    final isPending = auth.user?.verificationStatus == null || auth.user?.verificationStatus == 'pending';
+    final isPending = auth.user?.verificationStatus == null ||
+        auth.user?.verificationStatus == 'pending';
 
     if (isPending) {
       return Scaffold(
@@ -130,12 +131,17 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline, size: 48, color: AppTheme.warning),
+                const Icon(Icons.lock_outline,
+                    size: 48, color: AppTheme.warning),
                 const SizedBox(height: 16),
                 Text('Account Pending Approval',
-                    style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.warning)),
+                    style: GoogleFonts.dmSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.warning)),
                 const SizedBox(height: 8),
-                Text('Your account is awaiting admin verification. You will be able to upload X-rays once approved.',
+                Text(
+                    'Your account is awaiting admin verification. You will be able to upload X-rays once approved.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dmSans(fontSize: 14, color: txtSec)),
               ],
@@ -153,18 +159,19 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Upload X-ray', style: GoogleFonts.dmSans(
-              fontSize: 26, 
-              fontWeight: FontWeight.w800,
-              color: theme.textTheme.headlineLarge?.color,
-            )),
+            Text('Upload X-ray',
+                style: GoogleFonts.dmSans(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: theme.textTheme.headlineLarge?.color,
+                )),
             const SizedBox(height: 4),
-            Text('Upload for AI analysis', style: GoogleFonts.dmSans(
-              fontSize: 14, 
-              color: txtSec,
-            )),
+            Text('Upload for AI analysis',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: txtSec,
+                )),
             const SizedBox(height: 20),
-            
             SectionCard(
               title: 'Upload Image',
               description: 'Drag and drop or click to select',
@@ -183,10 +190,14 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          const Icon(Icons.image, size: 64, color: Colors.white30),
+                          const Icon(Icons.image,
+                              size: 64, color: Colors.white30),
                           Positioned(
-                            top: 12, right: 12,
-                            child: DiagnosisBadge(label: _fileName ?? 'xray.jpg', type: BadgeType.info),
+                            top: 12,
+                            right: 12,
+                            child: DiagnosisBadge(
+                                label: _fileName ?? 'xray.jpg',
+                                type: BadgeType.info),
                           ),
                         ],
                       ),
@@ -206,11 +217,12 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Select Patient', style: GoogleFonts.dmSans(
-                        fontSize: 13, 
-                        fontWeight: FontWeight.w500,
-                        color: theme.textTheme.titleMedium?.color,
-                      )),
+                      Text('Select Patient',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: theme.textTheme.titleMedium?.color,
+                          )),
                       const SizedBox(height: 8),
                       Container(
                         decoration: BoxDecoration(
@@ -223,28 +235,32 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                               ? const Padding(
                                   padding: EdgeInsets.all(12),
                                   child: SizedBox(
-                                    width: 20, height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
                                   ),
                                 )
                               : DropdownButton<int>(
-                            value: _selectedPatientId,
-                            isExpanded: true,
-                            dropdownColor: theme.cardTheme.color,
-                            hint: Text('Select a patient', style: GoogleFonts.dmSans(
-                              color: txtSec, 
-                              fontSize: 14
-                            )),
-                            style: GoogleFonts.dmSans(
-                              fontSize: 14, 
-                              color: theme.textTheme.bodyLarge?.color
-                            ),
-                            items: _patients.map((p) => DropdownMenuItem(
-                              value: p['id'] as int?,
-                              child: Text(p['name'] as String? ?? 'Unknown'),
-                            )).toList(),
-                            onChanged: (v) => setState(() => _selectedPatientId = v),
-                          ),
+                                  value: _selectedPatientId,
+                                  isExpanded: true,
+                                  dropdownColor: theme.cardTheme.color,
+                                  hint: Text('Select a patient',
+                                      style: GoogleFonts.dmSans(
+                                          color: txtSec, fontSize: 14)),
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 14,
+                                      color: theme.textTheme.bodyLarge?.color),
+                                  items: _patients
+                                      .map((p) => DropdownMenuItem(
+                                            value: p['id'] as int?,
+                                            child: Text(p['name'] as String? ??
+                                                'Unknown'),
+                                          ))
+                                      .toList(),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedPatientId = v),
+                                ),
                         ),
                       ),
                     ],
@@ -254,12 +270,21 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton.icon(
-                      onPressed: (_selectedFile != null && _selectedPatientId != null) ? _submit : null,
+                      onPressed:
+                          (_selectedFile != null && _selectedPatientId != null)
+                              ? _submit
+                              : null,
                       icon: _isUploading
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.upload, size: 18),
-                      label: Text(_isUploading ? 'Uploading...' : 'Upload X-ray',
-                          style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600)),
+                      label: Text(
+                          _isUploading ? 'Uploading...' : 'Upload X-ray',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -272,4 +297,3 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
     );
   }
 }
-

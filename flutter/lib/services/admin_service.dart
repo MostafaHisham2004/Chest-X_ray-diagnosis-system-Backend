@@ -86,9 +86,10 @@ class AdminService {
     );
   }
 
-  Future<List<ManagedUser>> fetchPendingDoctors(String token, {String? search}) async {
-    final query = search != null && search.trim().isNotEmpty 
-        ? '?status=PENDING&q=${Uri.encodeQueryComponent(search.trim())}' 
+  Future<List<ManagedUser>> fetchPendingDoctors(String token,
+      {String? search}) async {
+    final query = search != null && search.trim().isNotEmpty
+        ? '?status=PENDING&q=${Uri.encodeQueryComponent(search.trim())}'
         : '?status=PENDING';
     final body = await _api.get('/api/admin/doctors$query', token: token);
     final data = body['data'] as Map<String, dynamic>? ?? {};
@@ -99,9 +100,10 @@ class AdminService {
         .toList();
   }
 
-  Future<List<ManagedUser>> fetchAllUsers(String token, {String? search}) async {
-    final query = search != null && search.trim().isNotEmpty 
-        ? '?q=${Uri.encodeQueryComponent(search.trim())}' 
+  Future<List<ManagedUser>> fetchAllUsers(String token,
+      {String? search}) async {
+    final query = search != null && search.trim().isNotEmpty
+        ? '?q=${Uri.encodeQueryComponent(search.trim())}'
         : '';
     final body = await _api.get('/api/admin/doctors$query', token: token);
     final data = body['data'] as Map<String, dynamic>? ?? {};

@@ -262,14 +262,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                     decoration: BoxDecoration(
                       color: theme.cardTheme.color,
                       borderRadius: BorderRadius.circular(24),
-                      border:
-                          theme.cardTheme.shape is RoundedRectangleBorder
-                              ? Border.fromBorderSide(
-                                  (theme.cardTheme.shape
-                                          as RoundedRectangleBorder)
-                                      .side,
-                                )
-                              : null,
+                      border: theme.cardTheme.shape is RoundedRectangleBorder
+                          ? Border.fromBorderSide(
+                              (theme.cardTheme.shape as RoundedRectangleBorder)
+                                  .side,
+                            )
+                          : null,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black
@@ -313,10 +311,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         AnimatedBuilder(
           animation: _shakeCtrl,
           builder: (context, child) {
-            final offset =
-                _shakeCtrl.isAnimating
-                    ? (4 * (0.5 - _shakeCtrl.value).abs() - 1) * 6
-                    : 0.0;
+            final offset = _shakeCtrl.isAnimating
+                ? (4 * (0.5 - _shakeCtrl.value).abs() - 1) * 6
+                : 0.0;
             return Transform.translate(offset: Offset(offset, 0), child: child);
           },
           child: TextField(
@@ -345,8 +342,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           'Egyptian numbers are auto-formatted (e.g. 010… → +2010…)',
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color:
-                isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
+            color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
           ),
         ),
         const SizedBox(height: 24),
@@ -453,10 +449,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         AnimatedBuilder(
           animation: _shakeCtrl,
           builder: (context, child) {
-            final offset =
-                _shakeCtrl.isAnimating
-                    ? (4 * (0.5 - _shakeCtrl.value).abs() - 1) * 6
-                    : 0.0;
+            final offset = _shakeCtrl.isAnimating
+                ? (4 * (0.5 - _shakeCtrl.value).abs() - 1) * 6
+                : 0.0;
             return Transform.translate(offset: Offset(offset, 0), child: child);
           },
           child: TextField(

@@ -798,8 +798,7 @@ class _LangOption extends StatelessWidget {
             ),
             if (isActive) ...[
               const SizedBox(width: 6),
-              const Icon(Icons.check_circle,
-                  size: 16, color: AppTheme.primary),
+              const Icon(Icons.check_circle, size: 16, color: AppTheme.primary),
             ],
           ],
         ),

@@ -1,4 +1,5 @@
 const { User, Doctor, Patient, Contact, ChatThread, ChatMessage } = require("../models");
+const { Op } = require("sequelize");
 const { sendContactOtp, verifyContactOtp } = require("../services/otpService");
 const { normalizePhoneNumber } = require("../services/whatsappService");
 const { sendSuccess, sendError } = require("../utils/response");
@@ -206,26 +207,28 @@ async function requestConnection(req, res, next) {
       });
     }
 
-    // Find the patient by normalized phone
-    const patientUser = await User.findOne({
-      where: { phone: normalizedPhone, role: "PATIENT" }
+    // Search with multiple phone formats to handle +/no-+ prefix mismatches
+    // DB might store "+201001206488" while normalizePhoneNumber returns "201001206488"
+    const phoneVariants = [
+      normalizedPhone,
+      `+${normalizedPhone}`,
+      phone.trim()
+    ].filter(Boolean);
+
+    const patient = await User.findOne({
+      where: {
+        role: "PATIENT",
+        phone: { [Op.in]: [...new Set(phoneVariants)] }
+      }
     });
 
-    if (!patientUser) {
-      // Also try unnormalized in case it was stored differently
-      const patientUserRaw = await User.findOne({
-        where: { phone, role: "PATIENT" }
+    if (!patient) {
+      return sendError(res, {
+        statusCode: 404,
+        message: "Patient with this phone number is not registered.",
+        code: "NOT_FOUND"
       });
-      if (!patientUserRaw) {
-        return sendError(res, {
-          statusCode: 404,
-          message: "Patient with this phone number is not registered.",
-          code: "NOT_FOUND"
-        });
-      }
     }
-
-    const patient = patientUser || await User.findOne({ where: { phone, role: "PATIENT" } });
 
     // Fetch the Doctor record to get the doctor's name
     const doctorProfile = await Doctor.findByPk(doctorId, {

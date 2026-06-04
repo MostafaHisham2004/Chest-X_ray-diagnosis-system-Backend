@@ -70,9 +70,8 @@ class MediScanApp extends StatelessWidget {
       // ── RTL / LTR Directionality ───────────────────────────────
       builder: (context, child) {
         return Directionality(
-          textDirection: languageProvider.isRTL
-              ? TextDirection.rtl
-              : TextDirection.ltr,
+          textDirection:
+              languageProvider.isRTL ? TextDirection.rtl : TextDirection.ltr,
           child: child!,
         );
       },

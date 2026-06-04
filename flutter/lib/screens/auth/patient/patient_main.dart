@@ -202,8 +202,7 @@ class _PatientOtpConnectionModalState
   void initState() {
     super.initState();
     _remaining = widget.pending.expiresAt.difference(DateTime.now());
-    _expiryTimer =
-        Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _expiryTimer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
   void _tick() {
@@ -241,7 +240,10 @@ class _PatientOtpConnectionModalState
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await widget.chatService.verifyPendingConnection(
         token: token,
@@ -252,10 +254,16 @@ class _PatientOtpConnectionModalState
       Navigator.of(context).pop(true); // success → parent navigates to chat
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.message; _loading = false; });
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
     } catch (_) {
       if (!mounted) return;
-      setState(() { _error = 'Verification failed. Please try again.'; _loading = false; });
+      setState(() {
+        _error = 'Verification failed. Please try again.';
+        _loading = false;
+      });
     }
   }
 

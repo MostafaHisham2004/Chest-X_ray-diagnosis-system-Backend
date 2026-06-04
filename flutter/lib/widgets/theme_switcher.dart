@@ -97,7 +97,11 @@ class _ModeOption extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: isSelected ? AppTheme.primary : (isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary),
+              color: isSelected
+                  ? AppTheme.primary
+                  : (isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.textSecondary),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -108,15 +112,22 @@ class _ModeOption extends StatelessWidget {
                     label,
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isSelected ? AppTheme.primary : (isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary),
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected
+                          ? AppTheme.primary
+                          : (isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.textPrimary),
                     ),
                   ),
                   Text(
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.textSecondary,
                     ),
                   ),
                 ],

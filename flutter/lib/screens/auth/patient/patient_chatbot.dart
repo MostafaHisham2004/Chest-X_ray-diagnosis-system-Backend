@@ -17,7 +17,8 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
 
   final List<Map<String, dynamic>> _messages = [
     {
-      'text': "Hello John! 👋 I'm your friendly AI health assistant. I'm here to help you understand your health reports, explain medical terms in simple language, and answer your health questions. How can I help you today?",
+      'text':
+          "Hello John! 👋 I'm your friendly AI health assistant. I'm here to help you understand your health reports, explain medical terms in simple language, and answer your health questions. How can I help you today?",
       'isUser': false,
       'time': '02:55 PM',
     },
@@ -45,7 +46,8 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
       if (!mounted) return;
       setState(() {
         _isTyping = false;
-        _messages.add({'text': _getResponse(text), 'isUser': false, 'time': _timeNow()});
+        _messages.add(
+            {'text': _getResponse(text), 'isUser': false, 'time': _timeNow()});
       });
       _scrollToBottom();
     });
@@ -67,7 +69,11 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
 
   String _timeNow() {
     final now = DateTime.now();
-    final h = now.hour > 12 ? now.hour - 12 : now.hour == 0 ? 12 : now.hour;
+    final h = now.hour > 12
+        ? now.hour - 12
+        : now.hour == 0
+            ? 12
+            : now.hour;
     final m = now.minute.toString().padLeft(2, '0');
     final period = now.hour >= 12 ? 'PM' : 'AM';
     return '$h:$m $period';
@@ -106,8 +112,15 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI Health Assistant', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w800)),
-                Text('Ask about your health', style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                Text('AI Health Assistant',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 22, fontWeight: FontWeight.w800)),
+                Text('Ask about your health',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.textSecondary)),
               ],
             ),
           ),
@@ -122,7 +135,10 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
                     decoration: BoxDecoration(
                       color: isDark ? AppTheme.darkCardBg : Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor),
+                      border: Border.all(
+                          color: isDark
+                              ? AppTheme.darkBorderColor
+                              : AppTheme.borderColor),
                     ),
                     child: Column(
                       children: [
@@ -131,35 +147,57 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
                           child: Row(
                             children: [
                               Container(
-                                width: 32, height: 32,
-                                decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(8)),
-                                child: const Icon(Icons.favorite_outline, size: 16, color: Colors.white),
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: const Icon(Icons.favorite_outline,
+                                    size: 16, color: Colors.white),
                               ),
                               const SizedBox(width: 10),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Your Health Assistant', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700)),
-                                  Text('Easy-to-understand health info', style: GoogleFonts.dmSans(fontSize: 12, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                                  Text('Your Health Assistant',
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700)),
+                                  Text('Easy-to-understand health info',
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 12,
+                                          color: isDark
+                                              ? AppTheme.darkTextSecondary
+                                              : AppTheme.textSecondary)),
                                 ],
                               ),
                               const Spacer(),
-                              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.success, shape: BoxShape.circle)),
+                              Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                      color: AppTheme.success,
+                                      shape: BoxShape.circle)),
                             ],
                           ),
                         ),
                         const Divider(height: 1),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 200, maxHeight: 320),
+                          constraints: const BoxConstraints(
+                              minHeight: 200, maxHeight: 320),
                           child: ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(16),
                             itemCount: _messages.length + (_isTyping ? 1 : 0),
                             itemBuilder: (_, i) {
-                              if (i == _messages.length) return const _TypingBubble();
+                              if (i == _messages.length)
+                                return const _TypingBubble();
                               final m = _messages[i];
-                              return ChatBubble(message: m['text'], isUser: m['isUser'], time: m['time']);
+                              return ChatBubble(
+                                  message: m['text'],
+                                  isUser: m['isUser'],
+                                  time: m['time']);
                             },
                           ),
                         ),
@@ -174,18 +212,27 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
                                   style: GoogleFonts.dmSans(fontSize: 14),
                                   onSubmitted: (_) => _sendMessage(),
                                   decoration: const InputDecoration(
-                                    hintText: 'Ask me anything about your health...',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    hintText:
+                                        'Ask me anything about your health...',
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 12),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                width: 42, height: 42,
-                                decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(10)),
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(10)),
                                 child: IconButton(
                                   // FIX: removed const, isDark is a runtime value
-                                  icon: Icon(Icons.send, color: isDark ? AppTheme.darkCardBg : Colors.white, size: 18),
+                                  icon: Icon(Icons.send,
+                                      color: isDark
+                                          ? AppTheme.darkCardBg
+                                          : Colors.white,
+                                      size: 18),
                                   onPressed: _sendMessage,
                                 ),
                               ),
@@ -200,17 +247,24 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
                     title: 'Common Questions',
                     description: 'Quick answers',
                     child: Column(
-                      children: _quickQuestions.map((q) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => _sendMessage(q),
-                            style: OutlinedButton.styleFrom(alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-                            child: Text(q, style: GoogleFonts.dmSans(fontSize: 13)),
-                          ),
-                        ),
-                      )).toList(),
+                      children: _quickQuestions
+                          .map((q) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton(
+                                    onPressed: () => _sendMessage(q),
+                                    style: OutlinedButton.styleFrom(
+                                        alignment: Alignment.centerLeft,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 14)),
+                                    child: Text(q,
+                                        style:
+                                            GoogleFonts.dmSans(fontSize: 13)),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -218,10 +272,14 @@ class _PatientChatbotScreenState extends State<PatientChatbotScreen> {
                     title: 'Health Tips',
                     child: Column(
                       children: const [
-                        _TipRow(Icons.medication_outlined, 'Take medications as prescribed'),
-                        _TipRow(Icons.bedtime_outlined, 'Get 7-9 hours of sleep'),
-                        _TipRow(Icons.water_drop_outlined, 'Stay hydrated with water'),
-                        _TipRow(Icons.smoke_free_outlined, 'Avoid smoking and alcohol'),
+                        _TipRow(Icons.medication_outlined,
+                            'Take medications as prescribed'),
+                        _TipRow(
+                            Icons.bedtime_outlined, 'Get 7-9 hours of sleep'),
+                        _TipRow(Icons.water_drop_outlined,
+                            'Stay hydrated with water'),
+                        _TipRow(Icons.smoke_free_outlined,
+                            'Avoid smoking and alcohol'),
                       ],
                     ),
                   ),
@@ -247,7 +305,11 @@ class _TipRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
+          Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                  color: AppTheme.primary, shape: BoxShape.circle)),
           const SizedBox(width: 10),
           Icon(icon, size: 16, color: AppTheme.primary),
           const SizedBox(width: 8),
@@ -269,27 +331,37 @@ class _TypingBubble extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.favorite_outline, size: 16, color: Colors.white),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+                color: AppTheme.primary,
+                borderRadius: BorderRadius.circular(16)),
+            child: const Icon(Icons.favorite_outline,
+                size: 16, color: Colors.white),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFFF3F3F5),
-              borderRadius: BorderRadius.circular(16).copyWith(bottomLeft: const Radius.circular(4)),
+              borderRadius: BorderRadius.circular(16)
+                  .copyWith(bottomLeft: const Radius.circular(4)),
             ),
             // FIX: removed const from Row, isDark is a runtime value
             child: Row(
-              children: List.generate(3, (i) => Container(
-                width: 6, height: 6,
-                margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
-                decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
-                  shape: BoxShape.circle,
-                ),
-              )),
+              children: List.generate(
+                  3,
+                  (i) => Container(
+                        width: 6,
+                        height: 6,
+                        margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.textSecondary,
+                          shape: BoxShape.circle,
+                        ),
+                      )),
             ),
           ),
         ],

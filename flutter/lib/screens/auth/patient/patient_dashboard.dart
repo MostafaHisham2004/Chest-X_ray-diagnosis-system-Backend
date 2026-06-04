@@ -97,7 +97,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.error.withOpacity(0.25)),
                   ),
-                  child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
+                  child: Text(_error!,
+                      style: GoogleFonts.dmSans(
+                          color: AppTheme.error, fontWeight: FontWeight.w600)),
                 ),
               // Welcome card
               Container(
@@ -162,7 +164,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
               const SizedBox(height: 16),
               // Summary stats
               if (_isLoading)
-                const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+                const Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator()))
               else ...[
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -178,14 +183,23 @@ class _PatientDashboardState extends State<PatientDashboard> {
                           Expanded(
                               child: StatCard(
                                   title: 'Status',
-                                  value: _latestXray != null ? (confidence.isNotEmpty ? 'Analyzed' : 'Pending') : 'No scans',
-                                  icon: _latestXray != null ? Icons.check_circle_outline : Icons.hourglass_empty_outlined,
-                                  iconColor: _latestXray != null ? AppTheme.success : AppTheme.warning)),
+                                  value: _latestXray != null
+                                      ? (confidence.isNotEmpty
+                                          ? 'Analyzed'
+                                          : 'Pending')
+                                      : 'No scans',
+                                  icon: _latestXray != null
+                                      ? Icons.check_circle_outline
+                                      : Icons.hourglass_empty_outlined,
+                                  iconColor: _latestXray != null
+                                      ? AppTheme.success
+                                      : AppTheme.warning)),
                           const SizedBox(width: 12),
                           Expanded(
                               child: StatCard(
                                   title: 'Confidence',
-                                  value: confidence.isNotEmpty ? confidence : '--',
+                                  value:
+                                      confidence.isNotEmpty ? confidence : '--',
                                   icon: Icons.verified_outlined,
                                   iconColor: AppTheme.primary)),
                         ],
@@ -204,9 +218,17 @@ class _PatientDashboardState extends State<PatientDashboard> {
                             Expanded(
                                 child: StatCard(
                                     title: 'Status',
-                                    value: _latestXray != null ? (confidence.isNotEmpty ? 'Analyzed' : 'Pending') : 'No scans',
-                                    icon: _latestXray != null ? Icons.check_circle_outline : Icons.hourglass_empty_outlined,
-                                    iconColor: _latestXray != null ? AppTheme.success : AppTheme.warning)),
+                                    value: _latestXray != null
+                                        ? (confidence.isNotEmpty
+                                            ? 'Analyzed'
+                                            : 'Pending')
+                                        : 'No scans',
+                                    icon: _latestXray != null
+                                        ? Icons.check_circle_outline
+                                        : Icons.hourglass_empty_outlined,
+                                    iconColor: _latestXray != null
+                                        ? AppTheme.success
+                                        : AppTheme.warning)),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -276,10 +298,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const Icon(Icons.info_outline,
-                                              size: 16, color: AppTheme.primary),
+                                              size: 16,
+                                              color: AppTheme.primary),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
@@ -287,7 +311,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                               style: GoogleFonts.dmSans(
                                                   fontSize: 12,
                                                   color: isDark
-                                                      ? AppTheme.darkTextSecondary
+                                                      ? AppTheme
+                                                          .darkTextSecondary
                                                       : AppTheme.textSecondary),
                                             ),
                                           ),
@@ -305,10 +330,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
                           height: 44,
                           child: ElevatedButton.icon(
                             onPressed: () {},
-                            icon: const Icon(Icons.description_outlined, size: 16),
+                            icon: const Icon(Icons.description_outlined,
+                                size: 16),
                             label: Text('View Full Report',
-                                style:
-                                    GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                                style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],
@@ -352,8 +378,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
                           onPressed: () {},
                           icon: const Icon(Icons.chat_outlined, size: 16),
                           label: Text('Ask AI About My Condition',
-                              style:
-                                  GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                              style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],

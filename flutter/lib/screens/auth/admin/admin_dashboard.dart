@@ -199,13 +199,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           CircleAvatar(
                                             radius: 22,
-                                            backgroundColor: AppTheme.primary.withOpacity(0.14),
+                                            backgroundColor: AppTheme.primary
+                                                .withOpacity(0.14),
                                             child: Text(
                                               doc.initials,
                                               style: GoogleFonts.dmSans(
@@ -217,7 +219,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   doc.name,
@@ -239,27 +242,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 12),
-                                      _infoRow(context, 'Specialization', doc.specialization ?? 'N/A'),
-                                      _infoRow(context, 'Medical Certificate Details', doc.medicalCertificate ?? 'N/A'),
+                                      _infoRow(context, 'Specialization',
+                                          doc.specialization ?? 'N/A'),
+                                      _infoRow(
+                                          context,
+                                          'Medical Certificate Details',
+                                          doc.medicalCertificate ?? 'N/A'),
                                       const SizedBox(height: 16),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           TextButton.icon(
                                             onPressed: () => _rejectDoctor(doc),
-                                            icon: const Icon(Icons.cancel_outlined, color: AppTheme.error),
+                                            icon: const Icon(
+                                                Icons.cancel_outlined,
+                                                color: AppTheme.error),
                                             label: Text(
                                               'Reject',
-                                              style: GoogleFonts.dmSans(color: AppTheme.error),
+                                              style: GoogleFonts.dmSans(
+                                                  color: AppTheme.error),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
                                           ElevatedButton.icon(
-                                            onPressed: () => _approveDoctor(doc),
-                                            icon: const Icon(Icons.verified_outlined),
+                                            onPressed: () =>
+                                                _approveDoctor(doc),
+                                            icon: const Icon(
+                                                Icons.verified_outlined),
                                             label: Text(
                                               'Approve',
-                                              style: GoogleFonts.dmSans(fontWeight: FontWeight.bold, color: Colors.white),
+                                              style: GoogleFonts.dmSans(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white),
                                             ),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: AppTheme.success,
@@ -293,7 +308,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           Text(
             label,
-            style: GoogleFonts.dmSans(fontSize: 11, color: txtSec, fontWeight: FontWeight.bold),
+            style: GoogleFonts.dmSans(
+                fontSize: 11, color: txtSec, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 2),
           Text(

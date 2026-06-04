@@ -17,7 +17,8 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
 
   final List<Map<String, dynamic>> _messages = [
     {
-      'text': "Hello Dr. Anderson! I'm your AI medical assistant. I can help you analyze X-ray results, compare patient scans, suggest treatment protocols, and clarify medical terminology. How can I assist you today?",
+      'text':
+          "Hello Dr. Anderson! I'm your AI medical assistant. I can help you analyze X-ray results, compare patient scans, suggest treatment protocols, and clarify medical terminology. How can I assist you today?",
       'isUser': false,
       'time': '02:17 PM',
     },
@@ -114,15 +115,14 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI Medical Assistant', style: GoogleFonts.dmSans(
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w800,
-                  color: theme.textTheme.headlineSmall?.color,
-                )),
-                Text('Ask questions about X-ray analyses', style: GoogleFonts.dmSans(
-                  fontSize: 13, 
-                  color: txtSec
-                )),
+                Text('AI Medical Assistant',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: theme.textTheme.headlineSmall?.color,
+                    )),
+                Text('Ask questions about X-ray analyses',
+                    style: GoogleFonts.dmSans(fontSize: 13, color: txtSec)),
               ],
             ),
           ),
@@ -137,9 +137,14 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
                     decoration: BoxDecoration(
                       color: theme.cardTheme.color,
                       borderRadius: BorderRadius.circular(16),
-                      border: theme.cardTheme.shape is RoundedRectangleBorder 
-                          ? Border.fromBorderSide((theme.cardTheme.shape as RoundedRectangleBorder).side)
-                          : Border.all(color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor),
+                      border: theme.cardTheme.shape is RoundedRectangleBorder
+                          ? Border.fromBorderSide(
+                              (theme.cardTheme.shape as RoundedRectangleBorder)
+                                  .side)
+                          : Border.all(
+                              color: isDark
+                                  ? AppTheme.darkBorderColor
+                                  : AppTheme.borderColor),
                     ),
                     child: Column(
                       children: [
@@ -149,29 +154,36 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
                           child: Row(
                             children: [
                               Container(
-                                width: 32, height: 32,
-                                decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(8)),
-                                child: const Icon(Icons.smart_toy_outlined, size: 16, color: Colors.white),
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: const Icon(Icons.smart_toy_outlined,
+                                    size: 16, color: Colors.white),
                               ),
                               const SizedBox(width: 10),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('AI Chatbot', style: GoogleFonts.dmSans(
-                                    fontSize: 16, 
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.textTheme.titleMedium?.color
-                                  )),
-                                  Text('Medical AI assistant', style: GoogleFonts.dmSans(
-                                    fontSize: 12, 
-                                    color: txtSec
-                                  )),
+                                  Text('AI Chatbot',
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: theme
+                                              .textTheme.titleMedium?.color)),
+                                  Text('Medical AI assistant',
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 12, color: txtSec)),
                                 ],
                               ),
                               const Spacer(),
                               Container(
-                                width: 8, height: 8,
-                                decoration: const BoxDecoration(color: AppTheme.success, shape: BoxShape.circle),
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                    color: AppTheme.success,
+                                    shape: BoxShape.circle),
                               ),
                             ],
                           ),
@@ -179,14 +191,16 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
                         const Divider(height: 1),
                         // Messages
                         ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 200, maxHeight: 350),
+                          constraints: const BoxConstraints(
+                              minHeight: 200, maxHeight: 350),
                           child: ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(16),
                             itemCount: _messages.length + (_isTyping ? 1 : 0),
                             itemBuilder: (_, i) {
-                              if (i == _messages.length) return const _TypingIndicator();
+                              if (i == _messages.length)
+                                return const _TypingIndicator();
                               final m = _messages[i];
                               return ChatBubble(
                                 message: m['text'],
@@ -208,20 +222,24 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
                                   style: GoogleFonts.dmSans(fontSize: 14),
                                   onSubmitted: (_) => _sendMessage(),
                                   decoration: const InputDecoration(
-                                    hintText: 'Ask a question about X-ray analysis...',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    hintText:
+                                        'Ask a question about X-ray analysis...',
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 12),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                width: 42, height: 42,
+                                width: 42,
+                                height: 42,
                                 decoration: BoxDecoration(
                                   color: AppTheme.primary,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                                  icon: const Icon(Icons.send,
+                                      color: Colors.white, size: 18),
                                   onPressed: _sendMessage,
                                 ),
                               ),
@@ -237,20 +255,25 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
                     title: 'Quick Questions',
                     description: 'Common queries',
                     child: Column(
-                      children: _quickQuestions.map((q) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => _sendMessage(q),
-                            style: OutlinedButton.styleFrom(
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            ),
-                            child: Text(q, style: GoogleFonts.dmSans(fontSize: 13)),
-                          ),
-                        ),
-                      )).toList(),
+                      children: _quickQuestions
+                          .map((q) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton(
+                                    onPressed: () => _sendMessage(q),
+                                    style: OutlinedButton.styleFrom(
+                                      alignment: Alignment.centerLeft,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 14),
+                                    ),
+                                    child: Text(q,
+                                        style:
+                                            GoogleFonts.dmSans(fontSize: 13)),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -259,10 +282,13 @@ class _DoctorChatbotScreenState extends State<DoctorChatbotScreen> {
                     title: 'AI Capabilities',
                     child: Column(
                       children: [
-                        _CapabilityRow('Explain AI diagnosis results', theme: theme),
+                        _CapabilityRow('Explain AI diagnosis results',
+                            theme: theme),
                         _CapabilityRow('Compare patient scans', theme: theme),
-                        _CapabilityRow('Suggest treatment protocols', theme: theme),
-                        _CapabilityRow('Clarify medical terminology', theme: theme),
+                        _CapabilityRow('Suggest treatment protocols',
+                            theme: theme),
+                        _CapabilityRow('Clarify medical terminology',
+                            theme: theme),
                       ],
                     ),
                   ),
@@ -288,12 +314,15 @@ class _CapabilityRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
+          Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                  color: AppTheme.primary, shape: BoxShape.circle)),
           const SizedBox(width: 10),
-          Text(text, style: GoogleFonts.dmSans(
-            fontSize: 14, 
-            color: theme.textTheme.bodyLarge?.color
-          )),
+          Text(text,
+              style: GoogleFonts.dmSans(
+                  fontSize: 14, color: theme.textTheme.bodyLarge?.color)),
         ],
       ),
     );
@@ -311,26 +340,36 @@ class _TypingIndicator extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.smart_toy_outlined, size: 16, color: Colors.white),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+                color: AppTheme.primary,
+                borderRadius: BorderRadius.circular(16)),
+            child: const Icon(Icons.smart_toy_outlined,
+                size: 16, color: Colors.white),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkRowBg : const Color(0xFFF3F3F5),
-              borderRadius: BorderRadius.circular(16).copyWith(bottomLeft: const Radius.circular(4)),
+              borderRadius: BorderRadius.circular(16)
+                  .copyWith(bottomLeft: const Radius.circular(4)),
             ),
             child: Row(
-              children: List.generate(3, (i) => Container(
-                width: 6, height: 6,
-                margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
-                decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
-                  shape: BoxShape.circle,
-                ),
-              )),
+              children: List.generate(
+                  3,
+                  (i) => Container(
+                        width: 6,
+                        height: 6,
+                        margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.textSecondary,
+                          shape: BoxShape.circle,
+                        ),
+                      )),
             ),
           ),
         ],

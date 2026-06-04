@@ -75,10 +75,18 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen>
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      if (!silent) setState(() { _error = e.message; _isLoading = false; });
+      if (!silent)
+        setState(() {
+          _error = e.message;
+          _isLoading = false;
+        });
     } catch (_) {
       if (!mounted) return;
-      if (!silent) setState(() { _error = 'Unable to load patients.'; _isLoading = false; });
+      if (!silent)
+        setState(() {
+          _error = 'Unable to load patients.';
+          _isLoading = false;
+        });
     }
   }
 
@@ -138,7 +146,8 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline, size: 48, color: AppTheme.warning),
+                const Icon(Icons.lock_outline,
+                    size: 48, color: AppTheme.warning),
                 const SizedBox(height: 16),
                 Text('Account Pending Approval',
                     style: GoogleFonts.dmSans(
@@ -250,7 +259,8 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen>
                                       style: GoogleFonts.dmSans(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
-                                        color: theme.textTheme.titleLarge?.color,
+                                        color:
+                                            theme.textTheme.titleLarge?.color,
                                       )),
                                   Text(
                                       '${filtered.length} patient${filtered.length == 1 ? '' : 's'}',
@@ -472,9 +482,9 @@ class _ConnectionChip extends StatelessWidget {
     final isActive = status == 'ACTIVE';
     final isPending = status == 'PENDING_VERIFICATION';
     final color = isActive
-        ? const Color(0xFF22C55E)  // green
+        ? const Color(0xFF22C55E) // green
         : isPending
-            ? const Color(0xFFF59E0B)  // amber
+            ? const Color(0xFFF59E0B) // amber
             : AppTheme.textSecondary;
     final label = isActive
         ? 'Connected'
@@ -589,11 +599,10 @@ class _PatientRow extends StatelessWidget {
                           : AppTheme.textSecondary))),
           Expanded(
               flex: 2,
-              child: DiagnosisBadge(label: status, type: diagnosisToType(status))),
+              child:
+                  DiagnosisBadge(label: status, type: diagnosisToType(status))),
           // Connection status chip (NEW)
-          Expanded(
-              flex: 2,
-              child: _ConnectionChip(status: connectionStatus)),
+          Expanded(flex: 2, child: _ConnectionChip(status: connectionStatus)),
           Expanded(
             flex: 1,
             child: TextButton(
@@ -744,7 +753,9 @@ class _AddPatientDialogState extends State<_AddPatientDialog> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not send code. Check phone number and try again.')),
+        const SnackBar(
+            content:
+                Text('Could not send code. Check phone number and try again.')),
       );
       setState(() => _loading = false);
     }
@@ -761,7 +772,8 @@ class _AddPatientDialogState extends State<_AddPatientDialog> {
         children: [
           Text(
             'Enter the patient\'s phone number. They will receive a WhatsApp verification code to confirm the connection.',
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppTheme.textSecondary),
+            style:
+                GoogleFonts.dmSans(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 16),
           TextField(

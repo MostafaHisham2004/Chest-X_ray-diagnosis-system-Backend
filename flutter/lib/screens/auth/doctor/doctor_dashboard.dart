@@ -93,9 +93,13 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                       decoration: BoxDecoration(
                         color: AppTheme.error.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.error.withOpacity(0.25)),
+                        border:
+                            Border.all(color: AppTheme.error.withOpacity(0.25)),
                       ),
-                      child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
+                      child: Text(_error!,
+                          style: GoogleFonts.dmSans(
+                              color: AppTheme.error,
+                              fontWeight: FontWeight.w600)),
                     ),
                   // Header
                   Text('Dashboard',
@@ -113,29 +117,37 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                             : AppTheme.textSecondary,
                       )),
                   const SizedBox(height: 16),
-                  if (user?.verificationStatus == null || user?.verificationStatus == 'pending')
+                  if (user?.verificationStatus == null ||
+                      user?.verificationStatus == 'pending')
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: AppTheme.warning.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                        border: Border.all(
+                            color: AppTheme.warning.withOpacity(0.3)),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.info_outline, size: 20, color: AppTheme.warning),
+                          const Icon(Icons.info_outline,
+                              size: 20, color: AppTheme.warning),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Account Pending Approval',
-                                    style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.warning)),
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.warning)),
                                 const SizedBox(height: 4),
-                                Text('Your account is awaiting admin verification. You will be able to access all features once approved.',
-                                    style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.warning)),
+                                Text(
+                                    'Your account is awaiting admin verification. You will be able to access all features once approved.',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 12, color: AppTheme.warning)),
                               ],
                             ),
                           ),
@@ -146,7 +158,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
                   // Stats grid
                   if (_isLoading)
-                    const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()))
+                    const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(48),
+                            child: CircularProgressIndicator()))
                   else ...[
                     LayoutBuilder(builder: (context, constraints) {
                       final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
@@ -156,7 +171,8 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: constraints.maxWidth > 600 ? 1.6 : 1.4,
+                        childAspectRatio:
+                            constraints.maxWidth > 600 ? 1.6 : 1.4,
                         children: [
                           StatCard(
                               title: 'Total Analyses',
@@ -191,26 +207,40 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                           ? Padding(
                               padding: const EdgeInsets.all(24),
                               child: Text('No recent analyses.',
-                                  style: GoogleFonts.dmSans(color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                                  style: GoogleFonts.dmSans(
+                                      color: isDark
+                                          ? AppTheme.darkTextSecondary
+                                          : AppTheme.textSecondary)),
                             )
                           : Column(
-                              children: _recentPatients.asMap().entries.map((entry) {
+                              children:
+                                  _recentPatients.asMap().entries.map((entry) {
                                 final i = entry.key;
                                 final xray = entry.value;
-                                final patient = xray['patient'] as Map<String, dynamic>?;
-                                final name = patient?['name'] as String? ?? 'Unknown';
-                                final date = xray['upload_date'] as String? ?? '';
-                                final ri = xray['result_image'] as Map<String, dynamic>?;
-                                final diagnosis = ri?['diagnosis_output']?['label'] as String? ??
-                                    ri?['diagnosis_output']?['prediction'] as String? ??
+                                final patient =
+                                    xray['patient'] as Map<String, dynamic>?;
+                                final name =
+                                    patient?['name'] as String? ?? 'Unknown';
+                                final date =
+                                    xray['upload_date'] as String? ?? '';
+                                final ri = xray['result_image']
+                                    as Map<String, dynamic>?;
+                                final diagnosis = ri?['diagnosis_output']
+                                        ?['label'] as String? ??
+                                    ri?['diagnosis_output']?['prediction']
+                                        as String? ??
                                     'Pending';
                                 return Column(
                                   children: [
                                     if (i > 0) const Divider(height: 20),
                                     _DiagnosisRow(
-                                      initials: name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                      initials: name.isNotEmpty
+                                          ? name[0].toUpperCase()
+                                          : '?',
                                       name: name,
-                                      date: date.isNotEmpty ? date.split('T')[0] : '',
+                                      date: date.isNotEmpty
+                                          ? date.split('T')[0]
+                                          : '',
                                       diagnosis: diagnosis,
                                     ),
                                   ],

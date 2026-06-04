@@ -71,10 +71,16 @@ class _PatientXraysScreenState extends State<PatientXraysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('My X-rays', style: GoogleFonts.dmSans(fontSize: 26, fontWeight: FontWeight.w800)),
+              Text('My X-rays',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 26, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text('Your X-ray history and AI analysis results',
-                  style: GoogleFonts.dmSans(fontSize: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                  style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.textSecondary)),
               const SizedBox(height: 20),
               if (_error != null)
                 Container(
@@ -86,19 +92,29 @@ class _PatientXraysScreenState extends State<PatientXraysScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.error.withOpacity(0.25)),
                   ),
-                  child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
+                  child: Text(_error!,
+                      style: GoogleFonts.dmSans(
+                          color: AppTheme.error, fontWeight: FontWeight.w600)),
                 ),
               if (_isLoading)
-                const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()))
+                const Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(48),
+                        child: CircularProgressIndicator()))
               else
                 SectionCard(
                   title: 'X-ray History',
-                  description: '${_xrays.length} scan${_xrays.length == 1 ? '' : 's'} total',
+                  description:
+                      '${_xrays.length} scan${_xrays.length == 1 ? '' : 's'} total',
                   child: _xrays.isEmpty
                       ? Padding(
                           padding: const EdgeInsets.all(24),
-                          child: Text('No X-rays yet. Upload your first X-ray to get started.',
-                              style: GoogleFonts.dmSans(color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                          child: Text(
+                              'No X-rays yet. Upload your first X-ray to get started.',
+                              style: GoogleFonts.dmSans(
+                                  color: isDark
+                                      ? AppTheme.darkTextSecondary
+                                      : AppTheme.textSecondary)),
                         )
                       : Column(
                           children: _xrays.asMap().entries.map((entry) {
@@ -131,7 +147,9 @@ class _XrayRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final diagnosis = xray.diagnosisLabel;
     final confidence = xray.confidenceLabel;
-    final date = xray.uploadDate != null ? DateFormat.yMMMd().format(xray.uploadDate!.toLocal()) : 'Unknown';
+    final date = xray.uploadDate != null
+        ? DateFormat.yMMMd().format(xray.uploadDate!.toLocal())
+        : 'Unknown';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -152,7 +170,8 @@ class _XrayRow extends StatelessWidget {
               Row(
                 children: [
                   Text('Chest X-ray',
-                      style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700)),
+                      style: GoogleFonts.dmSans(
+                          fontSize: 14, fontWeight: FontWeight.w700)),
                   const SizedBox(width: 8),
                   DiagnosisBadge(
                     label: diagnosis,
@@ -164,15 +183,19 @@ class _XrayRow extends StatelessWidget {
               Text(date,
                   style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.textSecondary)),
               if (confidence.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.verified_outlined, size: 14, color: AppTheme.primary),
+                    const Icon(Icons.verified_outlined,
+                        size: 14, color: AppTheme.primary),
                     const SizedBox(width: 4),
                     Text('AI Confidence: $confidence',
-                        style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.primary)),
+                        style: GoogleFonts.dmSans(
+                            fontSize: 12, color: AppTheme.primary)),
                   ],
                 ),
               ],
@@ -181,8 +204,10 @@ class _XrayRow extends StatelessWidget {
         ),
         TextButton(
           onPressed: () {},
-          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
-          child: Text('View', style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.primary)),
+          style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+          child: Text('View',
+              style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.primary)),
         ),
       ],
     );

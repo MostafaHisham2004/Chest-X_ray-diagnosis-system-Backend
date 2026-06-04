@@ -256,7 +256,8 @@ class _CareChatScreenState extends State<CareChatScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: cardBg,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
                 child: Column(
@@ -284,7 +285,9 @@ class _CareChatScreenState extends State<CareChatScreen> {
                       'Enter the patient\'s mobile number to send a secure WhatsApp validation code.',
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
-                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -311,20 +314,23 @@ class _CareChatScreenState extends State<CareChatScreen> {
                                 }
                                 setModalState(() => isSubmitting = true);
                                 try {
-                                  final token = context.read<AuthProvider>().token;
+                                  final token =
+                                      context.read<AuthProvider>().token;
                                   if (token != null) {
                                     await _service.sendConnectionRequest(
                                       token: token,
                                       phone: phone,
                                     );
                                     Navigator.pop(context);
-                                    _showSnack('Connection request sent to patient.');
+                                    _showSnack(
+                                        'Connection request sent to patient.');
                                     _loadChat();
                                   }
                                 } on ApiException catch (e) {
                                   _showSnack(e.message);
                                 } catch (_) {
-                                  _showSnack('Could not initiate connection request.');
+                                  _showSnack(
+                                      'Could not initiate connection request.');
                                 } finally {
                                   setModalState(() => isSubmitting = false);
                                 }
@@ -413,7 +419,8 @@ class _CareChatScreenState extends State<CareChatScreen> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                     ),
                   ),
               ],
@@ -533,7 +540,8 @@ class _CareChatScreenState extends State<CareChatScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               )
             : null,
@@ -541,7 +549,8 @@ class _CareChatScreenState extends State<CareChatScreen> {
     }
 
     final other = thread.otherParticipant(role);
-    if (role == 'patient' && other.verificationStatus == 'PENDING_VERIFICATION') {
+    if (role == 'patient' &&
+        other.verificationStatus == 'PENDING_VERIFICATION') {
       return Column(
         children: [
           _ConversationHeader(contact: other),
@@ -550,6 +559,19 @@ class _CareChatScreenState extends State<CareChatScreen> {
               contact: other,
               onVerify: (code) => _verifyContactLink(code),
             ),
+          ),
+        ],
+      );
+    }
+
+    // Doctor sees a "waiting" card when the connection hasn't been confirmed yet
+    if (role == 'doctor' &&
+        other.verificationStatus == 'PENDING_VERIFICATION') {
+      return Column(
+        children: [
+          _ConversationHeader(contact: other),
+          Expanded(
+            child: _DoctorWaitingForPatientCard(patientName: other.name),
           ),
         ],
       );
@@ -1151,10 +1173,12 @@ class _PatientConnectionVerificationPane extends StatefulWidget {
   });
 
   @override
-  State<_PatientConnectionVerificationPane> createState() => _PatientConnectionVerificationPaneState();
+  State<_PatientConnectionVerificationPane> createState() =>
+      _PatientConnectionVerificationPaneState();
 }
 
-class _PatientConnectionVerificationPaneState extends State<_PatientConnectionVerificationPane> {
+class _PatientConnectionVerificationPaneState
+    extends State<_PatientConnectionVerificationPane> {
   final _codeCtrl = TextEditingController();
   bool _isVerifying = false;
 
@@ -1212,7 +1236,8 @@ class _PatientConnectionVerificationPaneState extends State<_PatientConnectionVe
               Text(
                 'Dr. ${widget.contact.name} wants to connect with you. Enter the 6-digit WhatsApp authorization code you received.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(fontSize: 13, color: txtSec, height: 1.4),
+                style: GoogleFonts.dmSans(
+                    fontSize: 13, color: txtSec, height: 1.4),
               ),
               const SizedBox(height: 24),
               TextField(
@@ -1241,7 +1266,8 @@ class _PatientConnectionVerificationPaneState extends State<_PatientConnectionVe
                           final code = _codeCtrl.text.trim();
                           if (code.length != 6) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Enter the 6-digit code.')),
+                              const SnackBar(
+                                  content: Text('Enter the 6-digit code.')),
                             );
                             return;
                           }
@@ -1267,6 +1293,145 @@ class _PatientConnectionVerificationPaneState extends State<_PatientConnectionVe
                           ),
                         ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Doctor-side "Waiting for Patient" Card
+// ──────────────────────────────────────────────────────────────────
+
+class _DoctorWaitingForPatientCard extends StatelessWidget {
+  final String patientName;
+  const _DoctorWaitingForPatientCard({required this.patientName});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated hourglass icon
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (context, value, child) =>
+                    Transform.scale(scale: value, child: child),
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.warning,
+                        AppTheme.warning.withValues(alpha: 0.7),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.warning.withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 36,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Waiting for Patient',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: theme.textTheme.titleLarge?.color,
+                ),
+              ),
+              const SizedBox(height: 12),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: txtSec,
+                    height: 1.5,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: patientName.isNotEmpty ? patientName : 'The patient',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                    const TextSpan(
+                      text:
+                          ' has received the verification code on WhatsApp. '
+                          'Once they confirm, the connection will be activated '
+                          'and you can start chatting.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Subtle pulse animation hint
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.warning.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Status will update automatically',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: txtSec,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

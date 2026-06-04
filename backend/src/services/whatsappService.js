@@ -49,7 +49,8 @@ async function sendTextMessage(phoneNumber, message) {
 
   const requestUrl = `${apiUrl}/message/sendText/${instanceName}`;
 
-  // Evolution API v2 payload format
+  // Evolution API v1 & v2 hybrid payload format
+  // Some instances require "textMessage: { text }", while others require "text" at the root.
   const payload = {
     number,
     options: {
@@ -59,7 +60,8 @@ async function sendTextMessage(phoneNumber, message) {
     },
     textMessage: {
       text
-    }
+    },
+    text: text
   };
 
   const controller = new AbortController();

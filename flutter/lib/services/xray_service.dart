@@ -39,7 +39,8 @@ class XrayRecord {
       imagePath: json['image_path'] as String? ?? '',
       uploadDate: _readDate(json['upload_date']),
       diagnosisOutput: diagnosis,
-      heatmapPath: ri is Map<String, dynamic> ? ri['heatmap_path'] as String? : null,
+      heatmapPath:
+          ri is Map<String, dynamic> ? ri['heatmap_path'] as String? : null,
     );
   }
 
@@ -109,7 +110,8 @@ class XrayService {
   Future<List<Map<String, dynamic>>> fetchDoctorPatients(String token) async {
     final body = await _api.get('/api/history/doctor-patients', token: token);
     final data = _readData(body);
-    final patients = data['patients'] as List? ?? body['patients'] as List? ?? const [];
+    final patients =
+        data['patients'] as List? ?? body['patients'] as List? ?? const [];
     return patients.whereType<Map<String, dynamic>>().toList();
   }
 
@@ -136,7 +138,9 @@ class XrayService {
       }
     }
 
-    if (response.statusCode >= 200 && response.statusCode < 300 && body['success'] == true) {
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body['success'] == true) {
       return body;
     }
 
